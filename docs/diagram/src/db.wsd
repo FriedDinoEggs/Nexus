@@ -1,0 +1,110 @@
+
+@startuml
+' 隱藏圓點，避免與連結線衝突
+hide circle
+' 設定線條為正交直線
+skinparam linetype ortho
+
+
+
+abstract class AbstractUser {
+    + username
+    + password
+    + first_name
+    + last_name
+    + email
+    + is_staff
+    + is_active
+    + is_superuser
+    + last_login
+    + date_joined
+    + groups : manyToManyField
+    + user_permissions : manyToManyField
+}
+
+class "Users" as Users {
+    + username : {derived} {None}
+    + email : {derived} {unique}
+    ' + email : << override, unique=Ture >>
+    --
+    + full_name : String
+    + data_of_birth : Date {optional}
+    + avatar : Image {optional}
+    + created_at : DataTime
+    + updated_at : DateTime
+    ' + data_of_birth : << blank=True >>
+    ' + avatar : << null=True >> 
+}
+AbstractUser <|-- Users
+
+class "Teams" as Teams {
+    + team_name : String
+    + manager_id : <<FK>>
+}
+
+class "TeamMembers" as TeamMembers {
+    + team_id : << FK >>
+    + user_id : << FK >>
+    --
+    { unique_together = ('team_id', 'user_id')}
+}
+
+class "Games" as Games {
+    + game_name : String
+    + location : String
+    + date_time : DateTime
+}
+
+' game_id, teamA_id, teamB_id 不為unique_together
+' 避免複賽重複對戰
+class "Matches" as Matches {
+    + game_id : << FK >>
+    + team_a_id : << FK >>
+    + team_b_id : << FK >>
+    --
+    + team_a_score : Int
+    + team_b_score : Int
+    + match_status : Enum{Scheduled,  Completed}
+}
+
+class "PlayerMatches" as PlayerMatches {
+    + match_id : << FK >>
+    + user_a_id : << FK >>
+    + user_b_id : << FK >>
+    --
+    + user_a_points_vs_b : Int
+    + user_b_points_vs_a : Int
+    --
+    + { unique_together = ('match_id', 'user_a_id', 'user_b_id')}
+}
+
+class "Rosters" as Rosters {
+    + team_id : << FK >>
+    + user_id : << FK >>
+    + match_id : << FK >>
+    --
+    + point : Int
+    + is_played: Bool
+    + notes : String
+    --
+    {unique_together = (team_id, user_id, match_id)}
+}
+
+Users "1" -- "*" Teams
+
+Users "1" -- "*" Rosters
+Teams "1" -- "*" Rosters
+Matches "1" -- "*" Rosters
+
+Users "1" -- "*" TeamMembers
+Teams "1" -- "*" TeamMembers
+
+Matches "1" -- "*" PlayerMatches
+Users "1" -- "*" PlayerMatches : userA
+Users "1" -- "*" PlayerMatches : userB
+
+Games "1" -- "*" Matches
+Teams "1" -- "*" Matches : teamA
+Teams "1" -- "*" Matches : teamB
+
+@enduml
