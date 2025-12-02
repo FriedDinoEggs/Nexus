@@ -4,8 +4,7 @@ hide circle
 ' 設定線條為正交直線
 skinparam linetype ortho
 
-
-
+' 繼承 django AbstractUse當作每個person
 abstract class AbstractUser {
     + username
     + password
@@ -36,7 +35,6 @@ class "User" as User {
     + is_verified : Bool
 }
 AbstractUser <|-- User
-
 
 ' ------ 隊伍 ------
 class "Team" as Team {
@@ -82,11 +80,8 @@ class "TeamMatch" as TeamMatch {
 
 class "PlayerMatch" as PlayerMatch {
     + team_match_id : << FK >>
-    + match_type : Str '競賽型態：單打、雙打、三打？
+    + match_type : Enum{Single, Double}
     + match_order : Int '第幾個排點
-    + match_format : Enum{Single, Double}
-    + team_a_player : JsonField ' 使用Json格式儲存，支援不限型態的同競賽模式
-    + team_b_player : JsonField ' 例如：[1, 4] 代表 user_id=1, user_id=4 的選手上場
     --
     + team_a_score : Int
     + team_b_score : Int
@@ -97,20 +92,32 @@ class "PlayerMatch" as PlayerMatch {
     + { unique_together = ('team_match_id', 'match_order')}
 }
 
+class "PlayerMatchParticipant" as PlayerMatchParticipant {
+    + player_match_id : << FK >>
+    + user_id : << FK >>
+    --
+    + team_side : Enum{A, B}
+    + position : Int {default=1, if match_type == Single}
+    --
+    unique_together = (player_match_id, user_id)
+}
+
+
+' -------
 
 User "1" -- "*" Team : leader
 User "1" -- "*" Team : coach
 
-
 User "1" -- "*" TeamMember
 Team "1" -- "*" TeamMember
-
 
 Event "1" -- "*" TeamMatch
 Team "1" -- "*" TeamMatch : teamA
 Team "1" -- "*" TeamMatch : teamB
 
-
 TeamMatch "1" -- "*" PlayerMatch
+
+PlayerMatch "1" -- "*" PlayerMatchParticipant
+User "1" -- "*" PlayerMatchParticipant
 
 @enduml
