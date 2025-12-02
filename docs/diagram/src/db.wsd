@@ -22,7 +22,7 @@ abstract class AbstractUser {
     + user_permissions : manyToManyField
 }
 
-class "Users" as Users {
+class "User" as User {
     + username : {derived} {None}
     + email : {derived} {unique}
     ' + email : << override, unique=Ture >>
@@ -35,30 +35,34 @@ class "Users" as Users {
     ' + data_of_birth : << blank=True >>
     ' + avatar : << null=True >> 
 }
-AbstractUser <|-- Users
+AbstractUser <|-- User
 
-class "Teams" as Teams {
+class "Team" as Team {
     + team_name : String
-    + manager_id : <<FK>>
+    + leader_id : <<FK>> {nullable}
+    + coach_id : <<FK>> {nullable}
+    --
+    { unique_together = (team_name, contant_persion_id)}
 }
 
-class "TeamMembers" as TeamMembers {
+class "TeamMember" as TeamMember {
     + team_id : << FK >>
     + user_id : << FK >>
     --
     { unique_together = ('team_id', 'user_id')}
 }
 
-class "Games" as Games {
-    + game_name : String
+class "Event" as Event {
+    + event_name : String
     + location : String
-    + date_time : DateTime
+    + start_time : DateTime
+    + end_time : DateTime
 }
 
-' game_id, teamA_id, teamB_id 不為unique_together
+' event_id, teamA_id, teamB_id 不為unique_together
 ' 避免複賽重複對戰
-class "Matches" as Matches {
-    + game_id : << FK >>
+class "TeamMatch" as TeamMatch {
+    + event_id : << FK >>
     + team_a_id : << FK >>
     + team_b_id : << FK >>
     --
@@ -67,44 +71,53 @@ class "Matches" as Matches {
     + match_status : Enum{Scheduled,  Completed}
 }
 
-class "PlayerMatches" as PlayerMatches {
-    + match_id : << FK >>
-    + user_a_id : << FK >>
-    + user_b_id : << FK >>
+class "PlayerMatch" as PlayerMatch {
+    + team_match_id : << FK >>
+    + match_order : Int
+    + match_format : Enum{Single, Double}
+    + team_a_user_a_id : << FK >>
+    + team_a_user_b_id : << FK >> {nullable, for double}
+    + team_b_user_a_id : << FK >>
+    + team_b_user_b_id : << FK >> {nullable, for double}
     --
-    + user_a_points_vs_b : Int
-    + user_b_points_vs_a : Int
+    + team_a_score : Int
+    + team_b_score : Int
+    + score_details : JsonField ' [{"a": "11", "b", "3"},
+                                '  {"a": "11", "b", "3"},
+                                '  {"a": "11", "b", "3"},]
     --
-    + { unique_together = ('match_id', 'user_a_id', 'user_b_id')}
+    + { unique_together = ('team_match_id', 'match_order')}
 }
 
-class "Rosters" as Rosters {
-    + team_id : << FK >>
+class "Roster" as Roster {
     + user_id : << FK >>
-    + match_id : << FK >>
+    + team_id : << FK >>
+    + team_match_id : << FK >>
     --
     + point : Int
     + is_played: Bool
     + notes : String
     --
-    {unique_together = (team_id, user_id, match_id)}
+    {unique_together = (user_id, team_id, team_match_id)}
 }
 
-Users "1" -- "*" Teams
+User "1" -- "*" Team
 
-Users "1" -- "*" Rosters
-Teams "1" -- "*" Rosters
-Matches "1" -- "*" Rosters
+User "1" -- "*" Roster
+Team "1" -- "*" Roster
+TeamMatch "1" -- "*" Roster
 
-Users "1" -- "*" TeamMembers
-Teams "1" -- "*" TeamMembers
+User "1" -- "*" TeamMember
+Team "1" -- "*" TeamMember
 
-Matches "1" -- "*" PlayerMatches
-Users "1" -- "*" PlayerMatches : userA
-Users "1" -- "*" PlayerMatches : userB
+TeamMatch "1" -- "*" PlayerMatch
+User "1" -- "*" PlayerMatch : teamA_userA
+User "1" -- "*" PlayerMatch : teamA_userB
+User "1" -- "*" PlayerMatch : teamB_userA
+User "1" -- "*" PlayerMatch : teamB_userB
 
-Games "1" -- "*" Matches
-Teams "1" -- "*" Matches : teamA
-Teams "1" -- "*" Matches : teamB
+Event "1" -- "*" TeamMatch
+Team "1" -- "*" TeamMatch : teamA
+Team "1" -- "*" TeamMatch : teamB
 
 @enduml
