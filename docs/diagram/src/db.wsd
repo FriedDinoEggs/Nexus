@@ -28,19 +28,21 @@ class "User" as User {
     + full_name : String
     + date_of_birth : Date {optional}
     + avatar : Image {optional}
-    + created_at : DateTime
-    + updated_at : DateTime
+    + created_at : DateTime {auto_now_add=True}
+    + updated_at : DateTime {auto_now=True}
 
-    + phone : Str 'Could potentially use the  django-phonenumber-field package
-    + is_verified : Bool
+    + phone : Str {optional} 'Could potentially use the  django-phonenumber-field package
+    + is_verified : Bool {default=False}
 }
 AbstractUser <|-- User
 
 ' ------ 隊伍 ------
 class "Team" as Team {
-    + team_name : String {nuique=True}
+    + team_name : String {unique=True}
     + leader_id : <<FK>> {nullable}
     + coach_id : <<FK>> {nullable}
+    + created_at : DateTime {auto_now_add=True}
+    + updated_at : DateTime {auto_now=True}
     --
 }
 
@@ -54,11 +56,12 @@ class "TeamMember" as TeamMember {
 ' ------ 比賽 ------
 class "Event" as Event {
     + event_name : String
-    + event_type : Enum{tournament, league, friendly}
+    + event_type : String 
     + location : String
     + start_time : DateTime
-    + end_time : DateTime
-    + create_at : DateTime{}
+    + end_time : DateTime 'end_time > start_time
+    + created_at : DateTime {auto_now_add=True}
+    + updated_at : DateTime {auto_now=True}
 }
 
 ' event_id, teamA_id, teamB_id 不為unique_together
@@ -68,23 +71,25 @@ class "TeamMatch" as TeamMatch {
     + team_a_id : << FK >>
     + team_b_id : << FK >>
     --
-    + team_a_score : Int
-    + team_b_score : Int
-    + match_data : DateField
-    + match_time : TimeField {nullable}
+    + team_a_score : Int {team_a_score >= 0}
+    + team_b_score : Int {team_b_score >= 0}
+    + match_date : DateField '紀錄對戰日期，支援跨日對戰
+    + match_time : TimeField {nullable} '紀錄對戰時間，可以不填避免麻煩
     + match_status : Enum{Scheduled, InProgress, Completed}
 
-    + create_at : DateTime
+    + created_at : DateTime
     + updated_at : DateTime
+    --
 }
 
 class "PlayerMatch" as PlayerMatch {
     + team_match_id : << FK >>
-    + match_type : Enum{Single, Double}
+    + match_format : Enum{Single, Double}
     + match_order : Int '第幾個排點
+    + match_label : Str '點位名稱：男單 30混雙 50男雙....
     --
-    + team_a_score : Int
-    + team_b_score : Int
+    + player_a_score : Int {player_a_score >= 0}
+    + player_b_score : Int {player_b_score >= 0}
     + score_details : JsonField ' [{"a": "11", "b": "3"},
                                 '  {"a": "11", "b": "3"},
                                 '  {"a": "11", "b": "3"},]
@@ -95,9 +100,9 @@ class "PlayerMatch" as PlayerMatch {
 class "PlayerMatchParticipant" as PlayerMatchParticipant {
     + player_match_id : << FK >>
     + user_id : << FK >>
+    + team_id : << FK >>
     --
-    + team_side : Enum{A, B}
-    + position : Int {default=1, if match_type == Single}
+    + position : Int {default=1} '在這裡表示打第幾號選手單打一號、雙打兩號以此累推
     --
     unique_together = (player_match_id, user_id)
 }
@@ -119,5 +124,6 @@ TeamMatch "1" -- "*" PlayerMatch
 
 PlayerMatch "1" -- "*" PlayerMatchParticipant
 User "1" -- "*" PlayerMatchParticipant
+Team "1" -- "*" PlayerMatchParticipant
 
 @enduml
