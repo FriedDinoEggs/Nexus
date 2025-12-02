@@ -1,4 +1,3 @@
-
 @startuml
 ' 隱藏圓點，避免與連結線衝突
 hide circle
@@ -28,21 +27,23 @@ class "User" as User {
     ' + email : << override, unique=Ture >>
     --
     + full_name : String
-    + data_of_birth : Date {optional}
+    + date_of_birth : Date {optional}
     + avatar : Image {optional}
-    + created_at : DataTime
+    + created_at : DateTime
     + updated_at : DateTime
-    ' + data_of_birth : << blank=True >>
-    ' + avatar : << null=True >> 
+
+    + phone : Str 'Could potentially use the  django-phonenumber-field package
+    + is_verified : Bool
 }
 AbstractUser <|-- User
 
+
+' ------ 隊伍 ------
 class "Team" as Team {
-    + team_name : String
+    + team_name : String {nuique=True}
     + leader_id : <<FK>> {nullable}
     + coach_id : <<FK>> {nullable}
     --
-    { unique_together = (team_name, contant_persion_id)}
 }
 
 class "TeamMember" as TeamMember {
@@ -52,11 +53,14 @@ class "TeamMember" as TeamMember {
     { unique_together = ('team_id', 'user_id')}
 }
 
+' ------ 比賽 ------
 class "Event" as Event {
     + event_name : String
+    + event_type : Enum{tournament, league, friendly}
     + location : String
     + start_time : DateTime
     + end_time : DateTime
+    + create_at : DateTime{}
 }
 
 ' event_id, teamA_id, teamB_id 不為unique_together
@@ -68,56 +72,45 @@ class "TeamMatch" as TeamMatch {
     --
     + team_a_score : Int
     + team_b_score : Int
-    + match_status : Enum{Scheduled,  Completed}
+    + match_data : DateField
+    + match_time : TimeField {nullable}
+    + match_status : Enum{Scheduled, InProgress, Completed}
+
+    + create_at : DateTime
+    + updated_at : DateTime
 }
 
 class "PlayerMatch" as PlayerMatch {
     + team_match_id : << FK >>
-    + match_order : Int
+    + match_type : Str '競賽型態：單打、雙打、三打？
+    + match_order : Int '第幾個排點
     + match_format : Enum{Single, Double}
-    + team_a_user_a_id : << FK >>
-    + team_a_user_b_id : << FK >> {nullable, for double}
-    + team_b_user_a_id : << FK >>
-    + team_b_user_b_id : << FK >> {nullable, for double}
+    + team_a_player : JsonField ' 使用Json格式儲存，支援不限型態的同競賽模式
+    + team_b_player : JsonField ' 例如：[1, 4] 代表 user_id=1, user_id=4 的選手上場
     --
     + team_a_score : Int
     + team_b_score : Int
-    + score_details : JsonField ' [{"a": "11", "b", "3"},
-                                '  {"a": "11", "b", "3"},
-                                '  {"a": "11", "b", "3"},]
+    + score_details : JsonField ' [{"a": "11", "b": "3"},
+                                '  {"a": "11", "b": "3"},
+                                '  {"a": "11", "b": "3"},]
     --
     + { unique_together = ('team_match_id', 'match_order')}
 }
 
-class "Roster" as Roster {
-    + user_id : << FK >>
-    + team_id : << FK >>
-    + team_match_id : << FK >>
-    --
-    + point : Int
-    + is_played: Bool
-    + notes : String
-    --
-    {unique_together = (user_id, team_id, team_match_id)}
-}
 
-User "1" -- "*" Team
+User "1" -- "*" Team : leader
+User "1" -- "*" Team : coach
 
-User "1" -- "*" Roster
-Team "1" -- "*" Roster
-TeamMatch "1" -- "*" Roster
 
 User "1" -- "*" TeamMember
 Team "1" -- "*" TeamMember
 
-TeamMatch "1" -- "*" PlayerMatch
-User "1" -- "*" PlayerMatch : teamA_userA
-User "1" -- "*" PlayerMatch : teamA_userB
-User "1" -- "*" PlayerMatch : teamB_userA
-User "1" -- "*" PlayerMatch : teamB_userB
 
 Event "1" -- "*" TeamMatch
 Team "1" -- "*" TeamMatch : teamA
 Team "1" -- "*" TeamMatch : teamB
+
+
+TeamMatch "1" -- "*" PlayerMatch
 
 @enduml
