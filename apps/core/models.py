@@ -113,10 +113,4 @@ class User(AbstractUser):
                 ],
                 name='core_user_full_name_index',
             ),
-            models.Index(
-                fields=[
-                    'email',
-                ],
-                name='core_user_email_index',
-            ),
         ]
