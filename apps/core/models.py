@@ -1,3 +1,122 @@
+from django.contrib import auth
+from django.contrib.auth.models import AbstractUser, BaseUserManager
+from django.core.exceptions import ValidationError
 from django.db import models
 
 # Create your models here.
+
+
+def user_directory_path(instance, filename):
+    # file will be uploaded to MEDIA_ROOT/user_<id>/<filename>
+    return f'user_{instance.id}/{filename}'
+
+
+class CustomUserManager(BaseUserManager):
+    use_in_migrations = True
+
+    # https://docs.djangoproject.com/en/5.2/topics/auth/customizing/#writing-a-manager-for-a-custom-user-model
+    def create_user(self, email: str, full_name: str, password: str = None, **extra_fields):
+        if not email:
+            raise ValueError('Users must have an email address!')
+        if not full_name or len(full_name.strip()) < 2:
+            raise ValueError('Full name must be at lest 2 caraters long!!!')
+
+        email = self.normalize_email(email)
+        user = self.model(email=email, full_name=full_name.strip(), **extra_fields)
+        user.set_password(password)
+        user.save(using=self._db)
+
+        return user
+
+    def create_superuser(self, email: str, full_name: str, password: str = None, **extra_fields):  # type: ignore
+        extra_fields.setdefault('is_staff', True)
+        extra_fields.setdefault('is_superuser', True)
+
+        if extra_fields.get('is_staff') is not True:
+            raise ValueError('Superuser must have is_staff=True.')
+        if extra_fields.get('is_superuser') is not True:
+            raise ValueError('Superuser must have is_superuser=True.')
+
+        user = self.create_user(email=email, full_name=full_name, password=password, **extra_fields)
+        user.save(using=self._db)
+        return user
+
+    # 這邊抄 django 的！！！
+    def with_perm(self, perm, is_active=True, include_superusers=True, backend=None, obj=None):
+        if backend is None:
+            backends = auth._get_backends(return_tuples=True)
+            if len(backends) == 1:
+                backend, _ = backends[0]
+            else:
+                raise ValueError(
+                    'You have multiple authentication backends configured and '
+                    'therefore must provide the `backend` argument.'
+                )
+        elif not isinstance(backend, str):
+            raise TypeError('backend must be a dotted import path string (got %r).' % backend)
+        else:
+            backend = auth.load_backend(backend)
+        if hasattr(backend, 'with_perm'):
+            return backend.with_perm(
+                perm,
+                is_active=is_active,
+                include_superusers=include_superusers,
+                obj=obj,
+            )
+        return self.none()
+
+
+class User(AbstractUser):
+    # TODO: 一些欄位尚未實做，新增功能時要檢查！！
+    # TODO: has_perm
+    username = None
+    first_name = None
+    last_name = None
+    email = models.EmailField(unique=True, max_length=254)
+    full_name = models.CharField(max_length=150)
+    date_of_birth = models.DateField(null=True, blank=True)
+    avatar = models.ImageField(null=True, blank=True, upload_to=user_directory_path)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    # avatar
+    # phone
+    # is_verified
+
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = ['full_name']
+
+    objects = CustomUserManager()
+
+    def get_full_name(self) -> str:
+        return self.full_name
+
+    def get_short_name(self) -> str:
+        return self.full_name
+
+    def clean(self):
+        super().clean()
+
+        # 誰名字只有一個字阿＝ ＝亂寫吧
+        if self.full_name and len(self.full_name.strip()) < 2:
+            raise ValidationError('Full name must be at lest 2 characters long.')
+
+    def __str__(self):
+        return self.email
+
+    class Meta:
+        indexes = [
+            models.Index(
+                fields=[
+                    'full_name',
+                ],
+                name='core_user_full_name_index',
+            ),
+            models.Index(
+                fields=[
+                    'email',
+                ],
+                name='core_user_email_index',
+            ),
+        ]
