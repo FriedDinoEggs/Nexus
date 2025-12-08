@@ -52,8 +52,9 @@ class UserProfileViewSet(viewsets.ModelViewSet):
 
     def perform_destroy(self, instance):
         instance.is_active = False
-        new_email = f'{instance.email}.deleted.{instance.pk}'
+        suffix = f'.deleted.{instance.pk}'
+        new_email = (instance.email[: 254 - len(suffix)] + suffix)[:254]
         if len(new_email) > 254:
-            new_email = new_email[:254]
+            new_email = new_email
         instance.email = new_email
         instance.save()

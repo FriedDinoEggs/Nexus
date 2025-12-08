@@ -41,18 +41,20 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 
         today = date.today()
         age = today.year - attrs.year - ((today.month, today.day) < (attrs.month, attrs.day))
-        if age < self.MIN_AGE or self.MAX_AGE > 120:
+        if age < self.MIN_AGE or age > self.MAX_AGE:
             raise serializers.ValidationError(
-                'Invalid age. Must be between {self.MIN_AGE} and {self.MAX_AGE}.'
+                f'Invalid age. Must be between {self.MIN_AGE} and {self.MAX_AGE}.'
             )
         return attrs
 
     def create(self, validated_data):
         validated_data.pop('password_confirm')
+        email = validated_data.pop('email')
+        password = validated_data.pop('password')
+        full_name = validated_data.pop('full_name')
+
         user = User.objects.create_user(
-            email=validated_data['email'],
-            password=validated_data['password'],
-            full_name=validated_data['full_name'],
+            email=email, password=password, full_name=full_name, **validated_data
         )
         return user
 
