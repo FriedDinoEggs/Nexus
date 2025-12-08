@@ -27,13 +27,15 @@ class Command(BaseCommand):
 
         for group_name, permissions in group_permissions.items():
             group, created = Group.objects.get_or_create(name=group_name)
+
+            group.permissions.set(permissions)
+
             if created:
                 self.stdout.write(f'Create group success: {group_name}')
-                group.permissions.set(permissions)
             else:
-                self.stdout.write(f'Group already exists: {group_name}')
+                self.stdout.write(f'Updated group: {group_name}')
 
-        self.stdout.write(self.style.SUCCESS('Create Group completed ！'))
+        self.stdout.write(self.style.SUCCESS('Create/Update Group completed ！'))
 
         superAdminGroup = Group.objects.get(name='SuperAdmin')
         for u in User.objects.all():
