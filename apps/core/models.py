@@ -1,14 +1,19 @@
+import uuid
+
 from django.contrib import auth
-from django.contrib.auth.models import AbstractUser, BaseUserManager
-from django.core.exceptions import ValidationError
+from django.contrib.auth.models import AbstractUser, BaseUserManager, Group
 from django.db import models
 
 # Create your models here.
 
 
 def user_directory_path(instance, filename):
-    # file will be uploaded to MEDIA_ROOT/user_<id>/<filename>
-    return f'user_{instance.id}/{filename}'
+    ext = filename.split('.')[-1]
+    filename = f'{uuid.uuid4()}.{ext}'
+    # file will be uploaded to MEDIA_ROOT/user_<pk>/<filename>
+    if instance.pk is None:
+        return f'user_new/{filename}'
+    return f'user_{instance.pk}/{filename}'
 
 
 class CustomUserManager(BaseUserManager):
@@ -18,14 +23,16 @@ class CustomUserManager(BaseUserManager):
     def create_user(self, email: str, full_name: str, password: str = None, **extra_fields):
         if not email:
             raise ValueError('Users must have an email address!')
-        if not full_name or len(full_name.strip()) < 2:
-            raise ValueError('Full name must be at lest 2 caraters long!!!')
+        # if not full_name or len(full_name.strip()) < 2:
+        #     raise ValueError('Full name must be at lest 2 caraters long!!!')
 
         email = self.normalize_email(email)
         user = self.model(email=email, full_name=full_name.strip(), **extra_fields)
         user.set_password(password)
         user.save(using=self._db)
 
+        default_group, _ = Group.objects.get_or_create(name='Member')
+        user.groups.add(default_group)
         return user
 
     def create_superuser(self, email: str, full_name: str, password: str = None, **extra_fields):  # type: ignore
@@ -73,7 +80,7 @@ class User(AbstractUser):
     first_name = None
     last_name = None
     email = models.EmailField(unique=True, max_length=254)
-    full_name = models.CharField(max_length=150)
+    full_name = models.CharField(blank=True, default='', max_length=150)
     date_of_birth = models.DateField(null=True, blank=True)
     avatar = models.ImageField(null=True, blank=True, upload_to=user_directory_path)
 
@@ -97,10 +104,6 @@ class User(AbstractUser):
 
     def clean(self):
         super().clean()
-
-        # 誰名字只有一個字阿＝ ＝亂寫吧
-        if self.full_name and len(self.full_name.strip()) < 2:
-            raise ValidationError('Full name must be at lest 2 characters long.')
 
     def __str__(self):
         return self.email
