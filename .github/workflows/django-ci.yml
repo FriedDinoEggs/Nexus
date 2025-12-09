@@ -33,6 +33,8 @@ jobs:
             - name: Install the latest version of uv
               uses: astral-sh/setup-uv@v7
 
+            - name: Install uv ruff
+              run: uv tool install 
             - name: Start CI services
               run: docker compose -f docker-compose.ci.yml up -d
 
