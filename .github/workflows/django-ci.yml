@@ -1,0 +1,50 @@
+name: Django CI
+
+on:
+    push:
+        branches: [dev, main]
+    pull_request:
+        branches: [dev, main]
+
+jobs:
+    test:
+        runs-on: ubuntu-latest
+        continue-on-error: true
+
+        # services:
+        #     postgres:
+        #         image: postgres:18
+        #         env:
+        #             POSTGRES_USER: postgres
+        #             POSTGRES_PASSWORD: postgres
+        #             POSTGRES_DB: test_db
+        #         ports:
+        #             - 5432:5432
+        #         options: >-
+        #             --health-cmd pg_isready
+        #             --health-interval 10s
+        #             --health-timeout 5s
+        #             --health-retries 5
+        
+        steps:
+            - name: Checkout the repository
+              uses: actions/checkout@v6
+
+            - name: Install the latest version of uv
+              uses: astral-sh/setup-uv@v7
+
+            - name: Start CI services
+              run: docker compose -f docker-compose.ci.yml up -d
+
+            - name: Wait for services
+              run: |
+                docker compose -p nexus-ci -f docker-compose.ci.yml ps
+                timeout 60 bash -c 'until docker compose -f docker-compose.ci.yml exec -T postgres pg_isready -U postgres; do sleep 2; done'
+
+            - name: Install Dependency
+              run: make install
+
+            - name: Run tests
+              env:
+                CI: true
+              run: make ci-test
