@@ -9,22 +9,7 @@ on:
 jobs:
     test:
         runs-on: ubuntu-latest
-        continue-on-error: true
-
-        # services:
-        #     postgres:
-        #         image: postgres:18
-        #         env:
-        #             POSTGRES_USER: postgres
-        #             POSTGRES_PASSWORD: postgres
-        #             POSTGRES_DB: test_db
-        #         ports:
-        #             - 5432:5432
-        #         options: >-
-        #             --health-cmd pg_isready
-        #             --health-interval 10s
-        #             --health-timeout 5s
-        #             --health-retries 5
+        continue-on-error: false
         
         steps:
             - name: Checkout the repository
