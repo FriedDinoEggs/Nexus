@@ -26,7 +26,6 @@ class UserRegisterView(generics.CreateAPIView):
 
 class UserProfileViewSet(viewsets.ModelViewSet):
     serializer_class = UserProfileSerializer
-    # authentication_classes = [JWTAuthentication]
     authentication_classes = [CustomJWTAuthentication]
 
     def get_queryset(self):
@@ -67,34 +66,16 @@ class UserProfileViewSet(viewsets.ModelViewSet):
         instance.save()
 
 
-# class UniversalLogoutView(APIView):
-#     permission_classes = [IsAuthenticated]
-
-#     def post(self, request):
-#         authenticator = request.successful_authenticator
-
-#         if isinstance(authenticator, CustomJWTAuthentication):
-#             view = CustomJWTLogoutView()
-#             view.request = request
-#             view.args = args
-#             view.kwargs = kwarg
-#             return view.post(request, *args, **kwargs)
-#         else:
-#             pass
-
-
 class CustomJWTLogoutView(TokenBlacklistView):
     permission_classes = [IsAuthenticated]
     authentication_classes = [CustomJWTAuthentication]
 
     def post(self, request, *args, **kwargs):
-        response = super().post(request, *args, **kwargs)
-
-        if response.status_code == 200:
-            access_token = request.auth
+        access_token = request.auth
+        if access_token is not None:
             BlackListService.set_blacklisted(token=access_token, user=request.user)
 
-        return response
+        return super().post(request, *args, **kwargs)
 
 
 class IPBaseThrottle(SimpleRateThrottle):
@@ -105,14 +86,10 @@ class IPBaseThrottle(SimpleRateThrottle):
             token = RefreshToken(request.data.get('refresh'))
             user_id = token.get('user_id')
             return f'throttle_refresh_{user_id}'
-        except:
+        except Exception as e:
+            logger.debug(f'Could not extract user_id from refresh token: {e}')
             return f'throttle_refresh_{self.get_ident(request)}'
 
 
 class CustomTokenRefreshView(TokenRefreshView):
     throttle_classes = [IPBaseThrottle]
-
-    def post(self, request, *args, **kwargs):
-        response = super().post(request, *args, **kwargs)
-
-        return response

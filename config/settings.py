@@ -79,7 +79,7 @@ if os.getenv('CI'):
     SECRET_KEY = '(m)zk25=oele=qi*$==$l(x4loi%(x$pccsd&gj5v^m82514$c'
     DEBUG = False
     
-    jDATABASES = {
+    DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.postgresql",
             "NAME": "test_db",
@@ -178,16 +178,23 @@ SIMPLE_JWT = {
     'BLACKLIST_AFTER_ROTATION': True,
 }
 
-CACHES = {
-    "default": {
-        "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": os.getenv('REDIS_LOCATION'),
-        "OPTIONS": {
-            "CLIENT_CLASS": "django_redis.client.DefaultClient",
-            "PASSWORD": os.getenv('REDIS_PASSWORD'),
+if os.getenv('CI'):
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
         }
     }
-}
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django_redis.cache.RedisCache",
+            "LOCATION": os.getenv('REDIS_LOCATION'),
+            "OPTIONS": {
+                "CLIENT_CLASS": "django_redis.client.DefaultClient",
+                "PASSWORD": os.getenv('REDIS_PASSWORD'),
+            }
+        }
+    }
 
 ROLE_ACTIONS_MAP = {
     'SuperAdmin': {

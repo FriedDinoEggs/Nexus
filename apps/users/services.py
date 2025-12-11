@@ -20,7 +20,11 @@ class BlackListService:
         if not token:
             return False
 
-        token_jti = token['jti']
+        token_jti = token.get('jti')
+        if not token_jti:
+            logger.warning('token missing jit claim')
+            return False
+
         black_name = f'{cls.blacklist_prefix}:{token_jti}'
 
         try:
@@ -35,7 +39,7 @@ class BlackListService:
             logger.warning('Falling back to DB check for reliability.')
 
             try:
-                return BlackListToken.objects.filter(token=token_jti).exists()
+                return BlackListToken.objects.filter(token=black_name).exists()
 
             except Exception as db_e:
                 logger.critical(f'Both Redis and DB are down= =: {db_e}')
@@ -54,21 +58,29 @@ class BlackListService:
 
             black_name = f'{cls.blacklist_prefix}:{token_jti}'
 
-            try:
-                cache.get_or_set(black_name, True, timeout=ttl)
-            except (CacheKeyWarning, InvalidCacheKey, ConnectionRefusedError, TimeoutError) as e:
-                logger.error(f'Cache operation failed for token JTI {token_jti}!: {e}')
-            except Exception as e:
-                logger.error(f'An unexception cache error occurred!: {e}')
+            if ttl <= 0:
+                logger.debug('token JTI already expired, skipping cache')
+            else:
+                try:
+                    cache.get_or_set(black_name, True, timeout=ttl)
+                except (
+                    CacheKeyWarning,
+                    InvalidCacheKey,
+                    ConnectionRefusedError,
+                    TimeoutError,
+                ) as e:
+                    logger.error(f'Cache operation failed for token JTI {token_jti}!: {e}')
+                except Exception as e:
+                    logger.error(f'An unexpected cache error occurred!: {e}')
 
-            try:
-                BlackListToken.objects.get_or_create(
-                    token=black_name, defaults={'expires_at': utc_aware_dt, 'user': user}
-                )
-            except (OperationalError, InterfaceError, DatabaseError):
-                logger.exception(
-                    f'Database operation failed for token JTI {token_jti}. Token might remain valid temporarily= ='
-                )
+                try:
+                    BlackListToken.objects.get_or_create(
+                        token=black_name, defaults={'expires_at': utc_aware_dt, 'user': user}
+                    )
+                except (OperationalError, InterfaceError, DatabaseError):
+                    logger.exception(
+                        f'Database operation failed for token JTI {token_jti}. Token might remain valid temporarily= ='
+                    )
 
         elif isinstance(token, RefreshToken):
             try:
