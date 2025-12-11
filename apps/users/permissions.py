@@ -21,5 +21,4 @@ class IsMemberGroup(permissions.BasePermission):
 
 class IsOwnerObject(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
-        print(f'request.user={request.user}, obj={obj}')
         return request.user == obj
