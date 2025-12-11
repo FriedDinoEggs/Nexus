@@ -72,6 +72,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
         ]
         extra_kwargs = {
             'password': {'write_only': True, 'min_length': 8},
+            'full_name': {'default': ''},
         }
 
     def create(self, validated_data):
@@ -98,8 +99,6 @@ class UserProfileSerializer(serializers.ModelSerializer):
         data = super().to_representation(instance)
         request = self.context.get('request')
         user = getattr(request, 'user', None)
-        # view = self.context.get('view')
-        # action = getattr(view, 'action', None) if view else None
 
         if not user or not user.is_authenticated:
             return {'id': data.get('id'), 'full_name': data.get('full_name')}
@@ -113,8 +112,10 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
         if 'SuperAdmin' in user_group:
             return data
-        if 'EventManager' in user_group or user.pk == instance.pk:
+        if 'EventManager' in user_group:
             allow_fields.update(['email'])
+        if user.pk == instance.pk:
+            allow_fields.update(['email', 'date_of_birth'])
 
         return {k: v for k, v in data.items() if k in allow_fields}
 

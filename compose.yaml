@@ -14,6 +14,39 @@ services:
     ports:
         - "5433:5432"
 
+  redis:
+    image: redis:8-alpine
+    container_name: nexus_redis
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redis_data:/data
+    command: >
+      redis-server
+        --protected-mode yes
+        --requirepass ${REDIS_PASSWORD:?error}
+        --appendonly yes
+        --appendfsync everysec
+        --maxmemory 512mb
+        --maxmemory-policy allkeys-lru
+        --bind 0.0.0.0
+        --save 900 1
+        --save 300 10
+        --save 60 10000
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 256M
+
+
   pgadmin:
     image: dpage/pgadmin4:latest
     container_name: nexus_pgadmin
@@ -30,4 +63,6 @@ services:
       - pgadmin_data:/var/lib/pgadmin
 volumes:
   pg_data:
+  redis_data:
+    name: nexus_redis_data
   pgadmin_data:
