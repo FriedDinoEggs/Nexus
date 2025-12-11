@@ -79,7 +79,8 @@ class BlackListService:
                     )
                 except (OperationalError, InterfaceError, DatabaseError):
                     logger.exception(
-                        f'Database operation failed for token JTI {token_jti}. Token might remain valid temporarily= ='
+                        f'Database operation failed for token JTI {token_jti}.'
+                        ' Token might remain valid temporarily= ='
                     )
 
         elif isinstance(token, RefreshToken):
