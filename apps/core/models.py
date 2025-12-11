@@ -109,6 +109,8 @@ class User(AbstractUser):
         return self.email
 
     class Meta:
+        ordering = ['created_at']
+
         indexes = [
             models.Index(
                 fields=[
