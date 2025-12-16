@@ -145,7 +145,6 @@ class SoftDeleteModel(TimeStampedModel):
         abstract = True
         default_manager_name = 'objects'
 
-
     def hard_delete(self, using=None, keep_parents=False):
         super().delete(using=using, keep_parents=keep_parents)
 
