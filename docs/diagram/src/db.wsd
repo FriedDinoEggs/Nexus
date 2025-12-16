@@ -110,8 +110,7 @@ class "TeamMatch" as TeamMatch {
     + team_a_id : << FK >>
     + team_b_id : << FK >>
     --
-    Meta: constraints: team_a_id <= team_b_id, name="%(app_label)s_%(class)s_a_id_lt_b_id"
-    Meta: constraints: team_a_id != team_b_id, name="%(app_label)s_%(class)s_a_id != %(app_label)s_%(class)s_b_id"
+    Meta: constraints: team_a_id < team_b_id, name="%(app_label)s_%(class)s_a_id_lt_b_id"
 }
 
 class "PlayerMatch" as PlayerMatch {
@@ -160,6 +159,7 @@ User  "1" -- "*" EventTeamMember
 
 User "1" -- "*" Team : leader
 User "1" -- "*" Team : coach
+User "1" -- "*" Team : creator
 
 User "1" -- "*" TeamMember
 Team "1" -- "*" TeamMember
@@ -173,6 +173,5 @@ TeamMatch "1" -- "*" PlayerMatch
 PlayerMatch "1" -- "*" MatchSet
 PlayerMatch "1" -- "*" PlayerMatchParticipant
 User "1" -- "*" PlayerMatchParticipant
-Team "1" -- "*" PlayerMatchParticipant
 
 @enduml
