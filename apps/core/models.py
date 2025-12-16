@@ -3,6 +3,7 @@ import uuid
 from django.contrib import auth
 from django.contrib.auth.models import AbstractUser, BaseUserManager, Group
 from django.db import models
+from django.utils import timezone
 
 # Create your models here.
 
@@ -119,3 +120,35 @@ class User(AbstractUser):
                 name='core_user_full_name_index',
             ),
         ]
+
+
+class TimeStampedModel(models.Model):
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        abstract = True
+
+
+class SoftDeleteManager(models.Manager):
+    def get_queryset(self):
+        return super().get_queryset().filter(deleted_at__isnull=True)
+
+
+class SoftDeleteModel(TimeStampedModel):
+    deleted_at = models.DateTimeField(null=True, blank=True, db_index=True)
+
+    all_objects = models.Manager()
+    objects = SoftDeleteManager()
+
+    class Meta:
+        abstract = True
+        default_manager_name = 'objects'
+
+    def hard_delete(self, using=None, keep_parents=False):
+        super().delete(using=using, keep_parents=keep_parents)
+
+    def delete(self, using=None, keep_parents=False):
+        self.deleted_at = timezone.now()
+        self.save(using=using)
+        return (1, {self._meta.label: 1})
