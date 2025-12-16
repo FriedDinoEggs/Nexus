@@ -151,3 +151,4 @@ class SoftDeleteModel(TimeStampedModel):
     def delete(self, using=None, keep_parents=False):
         self.deleted_at = timezone.now()
         self.save(using=using)
+        return (1, {self._meta.label: 1})
