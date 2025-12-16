@@ -23,7 +23,7 @@ abstract class AbstractUser {
 class "User" as User {
     + username : {derived} {None}
     + email : {derived} {unique}
-    ' + email : << override, unique=Ture >>
+    ' + email : << override, unique=True >>
     --
     + full_name : String
     + date_of_birth : Date {optional}
@@ -36,13 +36,34 @@ class "User" as User {
 }
 AbstractUser <|-- User
 
+abstract class "models.Model" as modelsModel {
+    << Framework >>
+}
+
+abstract class "TimeStampedModel" as TimeStampedModel {
+    + created_at : DateTime { auto_now_add=True}
+    + updated_at : DateTime { auto_now=True }
+    --
+    Meta : abstract=True
+}
+
+abstract class "SoftDeleteModel" as SoftDeleteModel {
+    + deleted_at: DateTime {nullable, indexed}
+    --
+    + delete()
+    + hard_delete()
+    --
+    Meta: abstract=True
+}
+
+
 ' ------ 隊伍 ------
+
 class "Team" as Team {
-    + team_name : String {unique=True}
+    + team_name : String
+    + creator_id : <<FK>>
     + leader_id : <<FK>> {nullable}
     + coach_id : <<FK>> {nullable}
-    + created_at : DateTime {auto_now_add=True}
-    + updated_at : DateTime {auto_now=True}
     --
 }
 
@@ -56,12 +77,30 @@ class "TeamMember" as TeamMember {
 ' ------ 比賽 ------
 class "Event" as Event {
     + event_name : String
-    + event_type : String 
+    + event_type : Enum{Tournament, League, Friendly}
     + location : String
     + start_time : DateTime
-    + end_time : DateTime 'end_time > start_time
-    + created_at : DateTime {auto_now_add=True}
-    + updated_at : DateTime {auto_now=True}
+    + end_time : DateTime end_time > start_time
+}
+
+class "EventTeamMember" as EventTeamMember {
+    + event_id : << FK >>
+    + team_id : << FK >>
+    + user_id : << FK >>
+    --
+    { unique_together = ('event_id', 'user_id') } '一個比賽(event)一個user只能參加一個隊伍
+}
+
+class "BaseMatch" as BaseMatch {
+    ' + event_id : << FK >>
+    ' --
+    + match_date : Date
+    + match_time : Time
+    + match_number : Int 'TeamMatch:該次賽事(Event)的第幾場次 PlayerMatch：第幾個排點
+    --
+    + status() -> Enum{Scheduled, InProgress, Completed, Cancelled} : abstract method
+    --
+    Meta: abstract=True
 }
 
 ' event_id, teamA_id, teamB_id 不為unique_together
@@ -71,36 +110,30 @@ class "TeamMatch" as TeamMatch {
     + team_a_id : << FK >>
     + team_b_id : << FK >>
     --
-    + team_a_score : Int {team_a_score >= 0}
-    + team_b_score : Int {team_b_score >= 0}
-    + match_date : DateField '紀錄對戰日期，支援跨日對戰
-    + match_time : TimeField {nullable} '紀錄對戰時間，可以不填避免麻煩
-    + match_status : Enum{Scheduled, InProgress, Completed}
-
-    + created_at : DateTime
-    + updated_at : DateTime
-    --
+    Meta: constraints: team_a_id <= team_b_id, name="%(app_label)s_%(class)s_a_id_lt_b_id"
+    Meta: constraints: team_a_id != team_b_id, name="%(app_label)s_%(class)s_a_id != %(app_label)s_%(class)s_b_id"
 }
 
 class "PlayerMatch" as PlayerMatch {
     + team_match_id : << FK >>
     + match_format : Enum{Single, Double}
-    + match_order : Int '第幾個排點
     + match_label : Str '點位名稱：男單 30混雙 50男雙....
     --
-    + player_a_score : Int {player_a_score >= 0}
-    + player_b_score : Int {player_b_score >= 0}
-    + score_details : JsonField ' [{"a": "11", "b": "3"},
-                                '  {"a": "11", "b": "3"},
-                                '  {"a": "11", "b": "3"},]
+    + { unique_together = ('team_match_id', 'match_number')}
+}
+
+class "MatchSet" as MatchSet {
+    + player_match_id : << FK >>
+    + set_number : Int '第幾局
+    + score_a : Int
+    + score_b : Int
     --
-    + { unique_together = ('team_match_id', 'match_order')}
+    { unique_together = ('player_match_id', 'set_number')}
 }
 
 class "PlayerMatchParticipant" as PlayerMatchParticipant {
     + player_match_id : << FK >>
     + user_id : << FK >>
-    + team_id : << FK >>
     --
     + position : Int {default=1} '在這裡表示打第幾號選手單打一號、雙打兩號以此累推
     --
@@ -109,6 +142,21 @@ class "PlayerMatchParticipant" as PlayerMatchParticipant {
 
 
 ' -------
+modelsModel <|-- TimeStampedModel
+TimeStampedModel <|-- SoftDeleteModel
+
+TimeStampedModel <|-- TeamMember
+
+SoftDeleteModel <|-- Team 
+SoftDeleteModel <|-- Event
+SoftDeleteModel <|-- BaseMatch
+
+BaseMatch <|-- PlayerMatch
+BaseMatch <|-- TeamMatch
+
+Event "1" -- "*" EventTeamMember
+Team  "1" -- "*" EventTeamMember
+User  "1" -- "*" EventTeamMember
 
 User "1" -- "*" Team : leader
 User "1" -- "*" Team : coach
@@ -122,6 +170,7 @@ Team "1" -- "*" TeamMatch : teamB
 
 TeamMatch "1" -- "*" PlayerMatch
 
+PlayerMatch "1" -- "*" MatchSet
 PlayerMatch "1" -- "*" PlayerMatchParticipant
 User "1" -- "*" PlayerMatchParticipant
 Team "1" -- "*" PlayerMatchParticipant
