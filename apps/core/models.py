@@ -122,12 +122,13 @@ class User(AbstractUser):
         ]
 
 
-
 class TimeStampedModel(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
     class Meta:
         abstract = True
+
 
 class SoftDeleteManager(models.Manager):
     def get_queryset(self):
@@ -137,11 +138,13 @@ class SoftDeleteManager(models.Manager):
 class SoftDeleteModel(TimeStampedModel):
     deleted_at = models.DateTimeField(null=True, blank=True, db_index=True)
 
-    objects = SoftDeleteManager()
     all_objects = models.Manager()
+    objects = SoftDeleteManager()
 
     class Meta:
         abstract = True
+        default_manager_name = 'objects'
+
 
     def hard_delete(self, using=None, keep_parents=False):
         super().delete(using=using, keep_parents=keep_parents)
