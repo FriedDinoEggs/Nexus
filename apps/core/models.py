@@ -107,7 +107,7 @@ class User(AbstractUser):
         super().clean()
 
     def __str__(self):
-        return self.email
+        return f'{self.full_name} <{self.email}>' if self.full_name else self.email
 
     class Meta:
         ordering = ['id']
