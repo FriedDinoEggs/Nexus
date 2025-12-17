@@ -169,7 +169,7 @@ class SoftDeleteModel(TimeStampedModel):
         self.save(using=using)
         return (1, {self._meta.label: 1})
 
-    def restore(self):
+    def restore(self, using=None):
         self.deleted_at = None
-        self.save()
+        self.save(using=using)
         return (1, {self._meta.label: 1})
