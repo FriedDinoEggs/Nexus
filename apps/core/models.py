@@ -2,7 +2,7 @@ import uuid
 
 from django.contrib import auth
 from django.contrib.auth.models import AbstractUser, BaseUserManager, Group
-from django.db import models
+from django.db import models, transaction
 from django.utils import timezone
 
 # Create your models here.
@@ -130,15 +130,36 @@ class TimeStampedModel(models.Model):
         abstract = True
 
 
-class SoftDeleteManager(models.Manager):
+class SoftDeleteQuerySet(models.QuerySet):
+    def delete(self):
+        with transaction.atomic(using=self._db):
+            count = 0
+            for obj in self:
+                _, deleted_dict = obj.delete()
+                count += 1
+
+        return (count, {self.model._meta.label: count})
+
+    def restore(self):
+        count = self.update(deleted_at=None)
+        return (count, {self.model._meta.label: count})
+
+    def alive(self):
+        return self.filter(deleted_at__isnull=True)
+
+    def dead(self):
+        return self.filter(deleted_at__isnull=False)
+
+
+class SoftDeleteManager(models.Manager.from_queryset(SoftDeleteQuerySet)):
     def get_queryset(self):
-        return super().get_queryset().filter(deleted_at__isnull=True)
+        return SoftDeleteQuerySet(self.model, using=self._db).filter(deleted_at__isnull=True)
 
 
 class SoftDeleteModel(TimeStampedModel):
     deleted_at = models.DateTimeField(null=True, blank=True, db_index=True)
 
-    all_objects = models.Manager()
+    all_objects = SoftDeleteQuerySet.as_manager()
     objects = SoftDeleteManager()
 
     class Meta:
@@ -150,5 +171,10 @@ class SoftDeleteModel(TimeStampedModel):
 
     def delete(self, using=None, keep_parents=False):
         self.deleted_at = timezone.now()
+        self.save(using=using)
+        return (1, {self._meta.label: 1})
+
+    def restore(self, using=None):
+        self.deleted_at = None
         self.save(using=using)
         return (1, {self._meta.label: 1})
