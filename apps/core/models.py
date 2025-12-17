@@ -2,7 +2,7 @@ import uuid
 
 from django.contrib import auth
 from django.contrib.auth.models import AbstractUser, BaseUserManager, Group
-from django.db import models
+from django.db import models, transaction
 from django.utils import timezone
 
 # Create your models here.
@@ -132,7 +132,12 @@ class TimeStampedModel(models.Model):
 
 class SoftDeleteQuerySet(models.QuerySet):
     def delete(self):
-        count = self.update(deleted_at=timezone.now())
+        with transaction.atomic(using=self._db):
+            count = 0
+            for obj in self:
+                _, deleted_dict = obj.delete()
+                count += 1
+
         return (count, {self.model._meta.label: count})
 
     def restore(self):
