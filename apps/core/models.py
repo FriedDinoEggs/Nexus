@@ -130,15 +130,31 @@ class TimeStampedModel(models.Model):
         abstract = True
 
 
-class SoftDeleteManager(models.Manager):
+class SoftDeleteQuerySet(models.QuerySet):
+    def delete(self):
+        count = self.update(deleted_at=timezone.now())
+        return (count, {self.model._meta.label: count})
+
+    def restore(self):
+        count = self.update(deleted_at=None)
+        return (count, {self.model._meta.label: count})
+
+    def alive(self):
+        return self.filter(deleted_at__isnull=True)
+
+    def dead(self):
+        return self.filter(deleted_at__isnull=False)
+
+
+class SoftDeleteManager(models.Manager.from_queryset(SoftDeleteQuerySet)):
     def get_queryset(self):
-        return super().get_queryset().filter(deleted_at__isnull=True)
+        return SoftDeleteQuerySet(self.model, using=self._db).filter(deleted_at__isnull=True)
 
 
 class SoftDeleteModel(TimeStampedModel):
     deleted_at = models.DateTimeField(null=True, blank=True, db_index=True)
 
-    all_objects = models.Manager()
+    all_objects = SoftDeleteQuerySet.as_manager()
     objects = SoftDeleteManager()
 
     class Meta:
@@ -151,4 +167,9 @@ class SoftDeleteModel(TimeStampedModel):
     def delete(self, using=None, keep_parents=False):
         self.deleted_at = timezone.now()
         self.save(using=using)
+        return (1, {self._meta.label: 1})
+
+    def restore(self):
+        self.deleted_at = None
+        self.save()
         return (1, {self._meta.label: 1})
