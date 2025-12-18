@@ -178,3 +178,19 @@ class SoftDeleteModel(TimeStampedModel):
         self.deleted_at = None
         self.save(using=using)
         return (1, {self._meta.label: 1})
+
+
+class Location(TimeStampedModel):
+    name = models.CharField(
+        max_length=128, help_text='Enter the location name (e.g., Banqiao Station)'
+    )
+    address = models.CharField(max_length=255, blank=True, verbose_name='Full address')
+    latitude = models.DecimalField(
+        max_digits=9, decimal_places=6, null=True, blank=True, verbose_name='Latitude'
+    )
+    longitude = models.DecimalField(
+        max_digits=9, decimal_places=6, null=True, blank=True, verbose_name='Longitude'
+    )
+
+    def __str__(self):
+        return self.name

@@ -56,6 +56,12 @@ abstract class "SoftDeleteModel" as SoftDeleteModel {
     Meta: abstract=True
 }
 
+class "Location" as Location {
+    + name : CharField
+    + address : CharField
+    + latitude : DecimalField
+    + longitude : DecimalField
+}
 
 ' ------ 隊伍 ------
 
