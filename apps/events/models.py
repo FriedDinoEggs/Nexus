@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import CheckConstraint, F, Q, UniqueConstraint
 
@@ -79,3 +80,31 @@ class EventTeam(TimeStampedModel):
 
     def __str__(self):
         return f'{self.team.name} in {self.event.name}'
+
+
+class EventTeamMember(TimeStampedModel):
+    event_team = models.ForeignKey(EventTeam, on_delete=models.CASCADE, related_name='roster')
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    is_player = models.BooleanField(default=False, blank=True)
+    is_coach = models.BooleanField(default=False, blank=True)
+    is_staff = models.BooleanField(default=False, blank=True)
+
+    class Meta:
+        constraints = [
+            UniqueConstraint(
+                fields=['event_team', 'user'],
+                name='unique_eventteam_user',
+                violation_error_message='The combination of EventTeam and User must be unique',
+            )
+        ]
+
+    def __str__(self):
+        return f'{self.user.full_name} in ({self.event_team})'
+
+    def clean(self):
+        if (
+            EventTeamMember.objects.filter(event_team__event=self.event_team.event, user=self.user)
+            .exclude(pk=self.pk)
+            .exists()
+        ):
+            raise ValidationError('User is already registered in another team for this event.')
