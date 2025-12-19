@@ -1,9 +1,12 @@
+from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 
 from apps.teams.models import Team
 
 from .models import Event, EventTeam, EventTeamMember
+
+User = get_user_model()
 
 
 class EventService:
@@ -54,15 +57,23 @@ class EventService:
     ) -> EventTeamMember:
         """
         Adds a user to a specific EventTeam roster.
+        Uses select_for_update on the user to prevent concurrent registrations
+        across different teams in the same event.
         """
-        member = EventTeamMember(
-            event_team=event_team,
-            user=user,
-            is_player=is_player,
-            is_coach=is_coach,
-            is_staff=is_staff,
-        )
+        try:
+            with transaction.atomic():
+                _ = User.objects.select_for_update().get(pk=user.pk)
 
-        member.full_clean()
-        member.save()
-        return member
+                member = EventTeamMember(
+                    event_team=event_team,
+                    user=user,
+                    is_player=is_player,
+                    is_coach=is_coach,
+                    is_staff=is_staff,
+                )
+
+                member.full_clean()
+                member.save()
+                return member
+        except IntegrityError:
+            raise ValidationError("User is already in this team's roster.") from None
