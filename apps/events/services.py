@@ -1,7 +1,9 @@
 from django.core.exceptions import ValidationError
-from django.db import transaction
+from django.db import IntegrityError
 
-from .models import Event, EventTeam, EventTeamMember, Team
+from apps.teams.models import Team
+
+from .models import Event, EventTeam, EventTeamMember
 
 
 class EventService:
@@ -34,15 +36,17 @@ class EventService:
         """
         Registers a team to an event.
         """
-        if EventTeam.objects.filter(event=event, team=team).exists():
-            raise ValidationError(f'Team {team.name} is already registered for this event.')
-
-        event_team = EventTeam(
-            event=event, team=team, status=status, coach=team.coach, leader=team.leader
-        )
-        event_team.full_clean()
-        event_team.save()
-        return event_team
+        try:
+            event_team = EventTeam(
+                event=event, team=team, status=status, coach=team.coach, leader=team.leader
+            )
+            event_team.full_clean()
+            event_team.save()
+            return event_team
+        except IntegrityError:
+            raise ValidationError(
+                f'Team {team.name} is already registered for this event.'
+            ) from None
 
     @staticmethod
     def add_team_member(

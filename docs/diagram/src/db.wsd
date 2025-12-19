@@ -108,7 +108,7 @@ class "EventTeamMember" as EventTeamMember {
     + is_coach : Bool
     + is_staff : Bool
     --
-    { unique_together = ('event_id', 'user_id') } '一個比賽(event)一個user只能參加一個隊伍
+    { unique_together = ('event_team_id', 'user_id') } '一個比賽(event)一個user只能參加一個隊伍
 }
 
 class "BaseMatch" as BaseMatch {

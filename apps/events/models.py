@@ -1,5 +1,5 @@
 from django.contrib.auth import get_user_model
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.db import models
 from django.db.models import CheckConstraint, F, Q, UniqueConstraint
 
@@ -53,7 +53,7 @@ class EventTeam(TimeStampedModel):
     class StatusChoices(models.TextChoices):
         PENDING = 'PD', 'Pending'
         APPROVED = 'AP', 'Approved'
-        REJECT = 'RJ', 'Reject'
+        REJECT = 'RJ', 'Rejected'
 
     event = models.ForeignKey(Event, on_delete=models.CASCADE)
     team = models.ForeignKey(Team, on_delete=models.CASCADE)
@@ -102,8 +102,13 @@ class EventTeamMember(TimeStampedModel):
         return f'{self.user.full_name} in ({self.event_team})'
 
     def clean(self):
+        try:
+            event = self.event_team.event
+        except (ObjectDoesNotExist, AttributeError, ValueError):
+            return
+
         if (
-            EventTeamMember.objects.filter(event_team__event=self.event_team.event, user=self.user)
+            EventTeamMember.objects.filter(event_team__event=event, user=self.user)
             .exclude(pk=self.pk)
             .exists()
         ):
