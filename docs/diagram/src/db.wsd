@@ -114,9 +114,9 @@ class "EventTeamMember" as EventTeamMember {
 class "BaseMatch" as BaseMatch {
     ' + event_id : << FK >>
     ' --
-    + match_date : Date
-    + match_time : Time
-    + match_number : Int 'TeamMatch:該次賽事(Event)的第幾場次 PlayerMatch：第幾個排點
+    + date : Date
+    + time : Time
+    + number : Int 'TeamMatch:該次賽事(Event)的第幾場次 PlayerMatch：第幾個排點
     --
     + status() -> Enum{Scheduled, InProgress, Completed, Cancelled} : abstract method
     --
@@ -126,7 +126,6 @@ class "BaseMatch" as BaseMatch {
 ' event_id, teamA_id, teamB_id 不為unique_together
 ' 避免複賽重複對戰
 class "TeamMatch" as TeamMatch {
-    + event_id : << FK >>
     + team_a_id : << FK to EventTeam >>
     + team_b_id : << FK to EventTeam >>
     --
@@ -134,11 +133,11 @@ class "TeamMatch" as TeamMatch {
 }
 
 class "PlayerMatch" as PlayerMatch {
-    + team_match_id : << FK >>
-    + match_format : Enum{Single, Double}
-    + match_label : Str '點位名稱：男單 30混雙 50男雙....
+    + team_match : << FK to TeamMatch >>
+    + format : Enum{Single, Double}
+    + requirement : Str '點位名稱：男單 30混雙 50男雙....
     --
-    + { unique_together = ('team_match_id', 'match_number')}
+    + { unique_together = ('team_match', 'number')}
 }
 
 class "MatchSet" as MatchSet {
@@ -151,8 +150,8 @@ class "MatchSet" as MatchSet {
 }
 
 class "PlayerMatchParticipant" as PlayerMatchParticipant {
-    + player_match_id : << FK >>
-    + user_id : << FK >>
+    + player_match : << FK PlayerMatch >>
+    + player : << FK to User >>
     --
     + position : Int {default=1} '在這裡表示打第幾號選手單打一號、雙打兩號以此累推
     --
@@ -188,7 +187,6 @@ User "1" -- "*" Team : creator
 User "1" -- "*" TeamMember
 Team "1" -- "*" TeamMember
 
-Event "1" -- "*" TeamMatch
 EventTeam "1" -- "*" TeamMatch : teamA
 EventTeam "1" -- "*" TeamMatch : teamB
 
