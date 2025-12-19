@@ -82,19 +82,33 @@ class "TeamMember" as TeamMember {
 
 ' ------ 比賽 ------
 class "Event" as Event {
+    + location : << FK >>
     + event_name : String
     + event_type : Enum{Tournament, League, Friendly}
-    + location : String
     + start_time : DateTime
     + end_time : DateTime end_time > start_time
 }
 
-class "EventTeamMember" as EventTeamMember {
+class "EventTeam" as EventTeam {
     + event_id : << FK >>
     + team_id : << FK >>
-    + user_id : << FK >>
     --
-    { unique_together = ('event_id', 'user_id') } '一個比賽(event)一個user只能參加一個隊伍
+    + coach_id : << FK >> {nullable} ' 這場比賽的教練
+    + leader_id : << FK >> {nullable} ' 這場比賽的領隊/聯絡人
+    + status : Enum {Pending, Approved, Rejected}
+    --
+    unique_together = (event_id, team_id)
+}
+
+
+class "EventTeamMember" as EventTeamMember {
+    + event_team_id : << FK >>
+    + user_id : << FK >>
+    + is_player : Bool
+    + is_coach : Bool
+    + is_staff : Bool
+    --
+    { unique_together = ('event_team_id', 'user_id') } '一個比賽(event)一個user只能參加一個隊伍
 }
 
 class "BaseMatch" as BaseMatch {
@@ -113,8 +127,8 @@ class "BaseMatch" as BaseMatch {
 ' 避免複賽重複對戰
 class "TeamMatch" as TeamMatch {
     + event_id : << FK >>
-    + team_a_id : << FK >>
-    + team_b_id : << FK >>
+    + team_a_id : << FK to EventTeam >>
+    + team_b_id : << FK to EventTeam >>
     --
     Meta: constraints: team_a_id < team_b_id, name="%(app_label)s_%(class)s_a_id_lt_b_id"
 }
@@ -159,8 +173,12 @@ SoftDeleteModel <|-- BaseMatch
 BaseMatch <|-- PlayerMatch
 BaseMatch <|-- TeamMatch
 
-Event "1" -- "*" EventTeamMember
-Team  "1" -- "*" EventTeamMember
+Event "1" -- "*" EventTeam
+Team "1" -- "*" EventTeam
+
+Location "1" -- "*" Event
+
+EventTeam "1" -- "*" EventTeamMember
 User  "1" -- "*" EventTeamMember
 
 User "1" -- "*" Team : leader
@@ -171,8 +189,8 @@ User "1" -- "*" TeamMember
 Team "1" -- "*" TeamMember
 
 Event "1" -- "*" TeamMatch
-Team "1" -- "*" TeamMatch : teamA
-Team "1" -- "*" TeamMatch : teamB
+EventTeam "1" -- "*" TeamMatch : teamA
+EventTeam "1" -- "*" TeamMatch : teamB
 
 TeamMatch "1" -- "*" PlayerMatch
 

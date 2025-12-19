@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.contrib.auth import get_user_model
 from django.contrib.auth.admin import UserAdmin
 
+from . import models
 from .forms import CustomUserChangeForm, CustomUserCreateForm
 
 # Register your models here.
@@ -54,3 +55,9 @@ class CustomUserAdmin(UserAdmin):
             },
         ),
     )
+
+
+@admin.register(models.Location)
+class LocationAdmin(admin.ModelAdmin):
+    list_display = ('name', 'address', 'latitude', 'longitude')
+    search_fields = ('name', 'address')
