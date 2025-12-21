@@ -3,25 +3,42 @@ from django.db import models
 from django.db.models import CheckConstraint, F, Q, UniqueConstraint
 
 from apps.core.models import SoftDeleteModel, TimeStampedModel
-from apps.events.models import EventTeam
+from apps.events.models import Event, EventTeam
 
 # Create your models here.
 User = get_user_model()
 
 
 class BaseMatch(SoftDeleteModel):
+    class StatusChoices(models.TextChoices):
+        SCHEDULED = 'SC', 'Scheduled'
+        IN_PROGRESS = 'IP', 'In Progress'
+        COMPLETED = 'CP', 'Completed'
+        CANCELLED = 'XX', 'Cancelled'
+
+    class WinnerChoices(models.TextChoices):
+        TEAM_A = 'A', 'Team_A'
+        TEAM_B = 'B', 'Team_B'
+        DRAW = 'D', 'Draw'
+
     date = models.DateField(null=True, blank=True)
     time = models.TimeField(null=True, blank=True)
     number = models.IntegerField(default=0)
 
+    status = models.CharField(
+        max_length=2,
+        choices=StatusChoices.choices,
+        default=StatusChoices.SCHEDULED,
+    )
+    winner = models.CharField(
+        max_length=1,
+        choices=WinnerChoices.choices,
+        blank=True,
+    )
+
     class Meta(SoftDeleteModel.Meta):
         ordering = ['number']
-
-    def status(self):
-        raise NotImplementedError(
-            f'Method "status" must be implemented in subclass "{self.__class__.__name__}"!!!'
-        )
-        ...
+        abstract = True
 
 
 class TeamMatch(BaseMatch):
@@ -57,14 +74,11 @@ class TeamMatch(BaseMatch):
         return f'{name_a} vs {name_b}'
 
 
-class PlayerMatch(BaseMatch):
+class BaseMatchConfiguration(models.Model):
     class MatchFormatChoice(models.TextChoices):
         SINGLE = 'S', 'Single'
         DOUBLE = 'D', 'Double'
 
-    team_match = models.ForeignKey(
-        TeamMatch, on_delete=models.CASCADE, related_name='player_matches'
-    )
     format = models.CharField(
         max_length=1,
         choices=MatchFormatChoice.choices,
@@ -82,6 +96,15 @@ class PlayerMatch(BaseMatch):
         ),
     )
 
+    class Meta:
+        abstract = True
+
+
+class PlayerMatch(BaseMatch, BaseMatchConfiguration):
+    team_match = models.ForeignKey(
+        TeamMatch, on_delete=models.CASCADE, related_name='player_matches'
+    )
+
     class Meta(BaseMatch.Meta):
         abstract = False
         constraints = [
@@ -94,6 +117,32 @@ class PlayerMatch(BaseMatch):
 
     def __str__(self):
         return f'Player match order {self.number} ({self.requirement})'
+
+
+class MatchTemplate(TimeStampedModel):
+    name = models.CharField(max_length=128, verbose_name='Template Name')
+    creator = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+
+    def __str__(self):
+        return self.name
+
+
+class MatchTemplateItem(BaseMatchConfiguration, TimeStampedModel):
+    template = models.ForeignKey(MatchTemplate, on_delete=models.CASCADE, related_name='items')
+    number = models.IntegerField(default=0)
+
+    class Meta:
+        ordering = ['number']
+        constraints = [
+            UniqueConstraint(
+                fields=['template', 'number'],
+                name='%(app_label)s_%(class)s_unique_template_item_number',
+                violation_error_message='Match number must be unique within a template.',
+            )
+        ]
+
+    def __str__(self):
+        return f'{self.template.name} - Match {self.number}'
 
 
 class MatchSet(TimeStampedModel):
@@ -121,13 +170,15 @@ class PlayerMatchParticipant(TimeStampedModel):
     player_match = models.ForeignKey(
         PlayerMatch, on_delete=models.CASCADE, related_name='participants'
     )
-    player = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='match_participations')
-    player_name_backup = models.CharField(max_length=128, null=True, blank=True)
+    player = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True, related_name='match_participations'
+    )
+    player_name_backup = models.CharField(default='', max_length=128, blank=True)
 
     position = models.IntegerField(default=1, verbose_name='Position')
 
     class Meta(TimeStampedModel.Meta):
-        abstract=False
+        abstract = False
         ordering = ['position']
         constraints = [
             UniqueConstraint(
@@ -138,9 +189,36 @@ class PlayerMatchParticipant(TimeStampedModel):
         ]
 
     def __str__(self):
-        return f"{self.player.full_name} playing in {self.player_match} (Pos: {self.position})"
-    
+        return f'{self.player.full_name} playing in {self.player_match} (Pos: {self.position})'
+
     def save(self, *argc, **kwargs):
-        if self.player and not self.player_name_backup:
+        if self.player and not self.player_name_backup == '':
             self.player_name_backup = self.player.full_name[:128]
         return super().save(*argc, **kwargs)
+
+
+def get_default_rule_config():
+    return {
+        'winning_sets': 3,  # Number of sets to win a PlayerMatch
+        'team_winning_points': 3,  # Number of points (matches) to win a TeamMatch
+        'play_all_sets': False,  # Must play all sets, overrides winning_sets setting
+        'play_all_matches': False,  # Must play all matches, overrides team_winning_points setting
+        'count_points_by_sets': False,  # Whether to count set scores (e.g. 3:2) or win/loss (1:0)
+    }
+
+
+class EventMatchConfiguration(TimeStampedModel):
+    event = models.OneToOneField(Event, on_delete=models.CASCADE, related_name='match_config')
+
+    template = models.ForeignKey(
+        MatchTemplate, on_delete=models.PROTECT, related_name='event_configs'
+    )
+
+    rule_config = models.JSONField(
+        default=get_default_rule_config,
+        blank=True,
+        help_text='Configuration for scoring rules (e.g. winning_sets, etc.)',
+    )
+
+    def __str__(self):
+        return f'Config for {self.event.name} using {self.template.name}'

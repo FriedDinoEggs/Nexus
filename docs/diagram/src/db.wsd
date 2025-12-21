@@ -23,7 +23,6 @@ abstract class AbstractUser {
 class "User" as User {
     + username : {derived} {None}
     + email : {derived} {unique}
-    ' + email : << override, unique=True >>
     --
     + full_name : String
     + date_of_birth : Date {optional}
@@ -31,7 +30,7 @@ class "User" as User {
     + created_at : DateTime {auto_now_add=True}
     + updated_at : DateTime {auto_now=True}
 
-    + phone : Str {optional} 'Could potentially use the  django-phonenumber-field package
+    + phone : Str {optional}
     + is_verified : Bool {default=False}
 }
 AbstractUser <|-- User
@@ -70,7 +69,6 @@ class "Team" as Team {
     + creator_id : <<FK>>
     + leader_id : <<FK>> {nullable}
     + coach_id : <<FK>> {nullable}
-    --
 }
 
 class "TeamMember" as TeamMember {
@@ -83,18 +81,18 @@ class "TeamMember" as TeamMember {
 ' ------ 比賽 ------
 class "Event" as Event {
     + location : << FK >>
-    + event_name : String
+    + name : String
     + event_type : Enum{Tournament, League, Friendly}
     + start_time : DateTime
-    + end_time : DateTime end_time > start_time
+    + end_time : DateTime
 }
 
 class "EventTeam" as EventTeam {
     + event_id : << FK >>
     + team_id : << FK >>
     --
-    + coach_id : << FK >> {nullable} ' 這場比賽的教練
-    + leader_id : << FK >> {nullable} ' 這場比賽的領隊/聯絡人
+    + coach_id : << FK >> {nullable}
+    + leader_id : << FK >> {nullable}
     + status : Enum {Pending, Approved, Rejected}
     --
     unique_together = (event_id, team_id)
@@ -108,41 +106,45 @@ class "EventTeamMember" as EventTeamMember {
     + is_coach : Bool
     + is_staff : Bool
     --
-    { unique_together = ('event_team_id', 'user_id') } '一個比賽(event)一個user只能參加一個隊伍
+    { unique_together = ('event_team_id', 'user_id') }
 }
 
-class "BaseMatch" as BaseMatch {
-    ' + event_id : << FK >>
-    ' --
+'-- Match Models
+
+abstract class "BaseMatchConfiguration" as BaseMatchConfiguration {
+    + format : Enum {Single, Double}
+    + requirement : String
+    --
+    Meta: abstract = True
+}
+
+
+abstract class "BaseMatch" as BaseMatch {
     + date : Date
     + time : Time
-    + number : Int 'TeamMatch:該次賽事(Event)的第幾場次 PlayerMatch：第幾個排點
-    --
-    + status() -> Enum{Scheduled, InProgress, Completed, Cancelled} : abstract method
+    + number : Int
+    + status : Enum {Scheduled, InProgress, Completed, Cancelled}
+    + winner : Enum {TeamA, TeamB, Draw}
     --
     Meta: abstract=True
 }
 
-' event_id, teamA_id, teamB_id 不為unique_together
-' 避免複賽重複對戰
 class "TeamMatch" as TeamMatch {
     + team_a_id : << FK to EventTeam >>
     + team_b_id : << FK to EventTeam >>
     --
-    Meta: constraints: team_a_id < team_b_id, name="%(app_label)s_%(class)s_a_id_lt_b_id"
+    Meta: constraints: team_a_id < team_b_id
 }
 
 class "PlayerMatch" as PlayerMatch {
     + team_match : << FK to TeamMatch >>
-    + format : Enum{Single, Double}
-    + requirement : Str '點位名稱：男單 30混雙 50男雙....
     --
     + { unique_together = ('team_match', 'number')}
 }
 
 class "MatchSet" as MatchSet {
-    + player_match_id : << FK >>
-    + set_number : Int '第幾局
+    + player_match : << FK to PlayerMatch >>
+    + set_number : Int
     + score_a : Int
     + score_b : Int
     --
@@ -153,24 +155,58 @@ class "PlayerMatchParticipant" as PlayerMatchParticipant {
     + player_match : << FK PlayerMatch >>
     + player : << FK to User >>
     --
-    + position : Int {default=1} '在這裡表示打第幾號選手單打一號、雙打兩號以此累推
+    + position : Int {default=1}
     --
-    unique_together = (player_match_id, user_id)
+    unique_together = (player_match_id, player_id)
+}
+
+class "MatchTemplate" as MatchTemplate {
+    + name : Str
+    + creator : << FK to User >>
+}
+
+class "MatchTemplateItem" as MatchTemplateItem {
+    + template : << FK to MatchTemplate >>
+    + number : Int
+}
+
+class "EventMatchConfiguration" as EventMatchConfiguration {
+    + event : << OneToOne to Event >>
+    + template : << FK to MatchTemplate >>
+    + rule_config : JSON
+    ' {
+    '   winning_sets: 3,
+    '   team_winning_points: 3,
+    '   play_all_sets: bool,
+    '   play_all_matches: bool,
+    '   count_points_by_sets: bool
+    ' }
 }
 
 
-' -------
+' ------- 關係線 -------
 modelsModel <|-- TimeStampedModel
 TimeStampedModel <|-- SoftDeleteModel
 
 TimeStampedModel <|-- TeamMember
+TimeStampedModel <|-- EventTeam
+TimeStampedModel <|-- EventTeamMember
+TimeStampedModel <|-- MatchTemplate
+TimeStampedModel <|-- MatchTemplateItem
+TimeStampedModel <|-- MatchSet
+TimeStampedModel <|-- PlayerMatchParticipant
+TimeStampedModel <|-- EventMatchConfiguration
 
 SoftDeleteModel <|-- Team 
 SoftDeleteModel <|-- Event
 SoftDeleteModel <|-- BaseMatch
 
+BaseMatchConfiguration <|-- PlayerMatch
+BaseMatchConfiguration <|-- MatchTemplateItem
+
 BaseMatch <|-- PlayerMatch
 BaseMatch <|-- TeamMatch
+
 
 Event "1" -- "*" EventTeam
 Team "1" -- "*" EventTeam
@@ -195,5 +231,9 @@ TeamMatch "1" -- "*" PlayerMatch
 PlayerMatch "1" -- "*" MatchSet
 PlayerMatch "1" -- "*" PlayerMatchParticipant
 User "1" -- "*" PlayerMatchParticipant
+
+MatchTemplate "1" -- "*" MatchTemplateItem
+MatchTemplate "1" -- "*" EventMatchConfiguration
+Event "1" -- "1" EventMatchConfiguration
 
 @enduml
