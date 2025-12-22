@@ -41,14 +41,18 @@ class BaseScoringStrategy[T: BaseMatch](ABC):
         """Get team names for side A and B"""
         if isinstance(match_obj, TeamMatch):
             return (
-                match_obj.team_a.team.name if match_obj.team_a else 'Unknown A',
-                match_obj.team_b.team.name if match_obj.team_b else 'Unknown B',
+                match_obj.team_a.team.name
+                if match_obj.team_a and match_obj.team_a.team
+                else 'Unknown A',
+                match_obj.team_b.team.name
+                if match_obj.team_b and match_obj.team_b.team
+                else 'Unknown B',
             )
         elif hasattr(match_obj, 'team_match') and match_obj.team_match:
             tm = match_obj.team_match
             return (
-                tm.team_a.team.name if tm.team_a else 'Unknown A',
-                tm.team_b.team.name if tm.team_b else 'Unknown B',
+                tm.team_a.team.name if tm.team_a and tm.team_a.team else 'Unknown A',
+                tm.team_b.team.name if tm.team_b and tm.team_b.team else 'Unknown B',
             )
         return 'Unknown A', 'Unknown B'
 

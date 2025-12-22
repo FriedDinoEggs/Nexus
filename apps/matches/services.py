@@ -125,6 +125,10 @@ class MatchService:
     def assign_player_to_match(player_match: PlayerMatch, player: User, position: int = 1):
         """Assign player to a specific match position and validate team eligibility"""
         team_match = player_match.team_match
+
+        if not team_match.team_a or not team_match.team_b:
+            raise ValueError('Can not assign players to match with missing theam referenct.')
+
         membership = (
             player.eventteammember_set.filter(event_team__event=team_match.team_a.event)
             .select_related('event_team')

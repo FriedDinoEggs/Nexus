@@ -189,10 +189,11 @@ class PlayerMatchParticipant(TimeStampedModel):
         ]
 
     def __str__(self):
-        return f'{self.player.full_name} playing in {self.player_match} (Pos: {self.position})'
+        player_name = self.player.full_name if self.player else 'Unknown Player'
+        return f'{player_name} playing in {self.player_match} (Pos: {self.position})'
 
     def save(self, *argc, **kwargs):
-        if self.player and not self.player_name_backup == '':
+        if self.player and not self.player_name_backup:
             self.player_name_backup = self.player.full_name[:128]
         return super().save(*argc, **kwargs)
 

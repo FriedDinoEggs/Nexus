@@ -148,7 +148,7 @@ class "MatchSet" as MatchSet {
     + score_a : Int
     + score_b : Int
     --
-    { unique_together = ('player_match_id', 'set_number')}
+    { unique_together = ('player_match', 'set_number')}
 }
 
 class "PlayerMatchParticipant" as PlayerMatchParticipant {
@@ -157,7 +157,7 @@ class "PlayerMatchParticipant" as PlayerMatchParticipant {
     --
     + position : Int {default=1}
     --
-    unique_together = (player_match_id, player_id)
+    unique_together = (player_match, player)
 }
 
 class "MatchTemplate" as MatchTemplate {
