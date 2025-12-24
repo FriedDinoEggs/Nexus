@@ -7,6 +7,15 @@ from django.contrib.auth import get_user_model
 User = get_user_model()
 
 def create_default_groups(apps, schema_editor):
+    """
+    Create the default authentication groups used by the application.
+    
+    Ensures the following groups exist in the auth Group model: "SuperAdmin", "EventManager", and "Member".
+    
+    Parameters:
+        apps: The migration apps registry (used to retrieve the auth Group model).
+        schema_editor: The database schema editor for this migration (not used).
+    """
     Group = apps.get_model('auth', 'Group')
     Group.objects.get_or_create(name='SuperAdmin')
     Group.objects.get_or_create(name='EventManager')
