@@ -167,6 +167,10 @@ class MatchSet(TimeStampedModel):
 
 
 class PlayerMatchParticipant(TimeStampedModel):
+    class SideChoices(models.TextChoices):
+        SIDE_A = 'A', 'Team A'
+        SIDE_B = 'B', 'Team B'
+
     player_match = models.ForeignKey(
         PlayerMatch, on_delete=models.CASCADE, related_name='participants'
     )
@@ -175,16 +179,27 @@ class PlayerMatchParticipant(TimeStampedModel):
     )
     player_name_backup = models.CharField(default='', max_length=128, blank=True)
 
+    side = models.CharField(
+        max_length=1,
+        choices=SideChoices.choices,
+        default=SideChoices.SIDE_A,
+        verbose_name='Side',
+    )
     position = models.IntegerField(default=1, verbose_name='Position')
 
     class Meta(TimeStampedModel.Meta):
         abstract = False
-        ordering = ['position']
+        ordering = ['side', 'position']
         constraints = [
             UniqueConstraint(
                 fields=['player_match', 'player'],
                 name='%(app_label)s_%(class)s_unique_participant',
                 violation_error_message='This player already exists for this match',
+            ),
+            UniqueConstraint(
+                fields=['player_match', 'side', 'position'],
+                name='%(app_label)s_%(class)s_unique_side_position',
+                violation_error_message='This position on this side is already occupied.',
             ),
             CheckConstraint(
                 condition=Q(position__in=[1, 2]),
@@ -206,6 +221,8 @@ class PlayerMatchParticipant(TimeStampedModel):
 def get_default_rule_config():
     return {
         'winning_sets': 3,  # Number of sets to win a PlayerMatch
+        'set_winning_points': 11,  # Points needed to win a single set
+        'use_deuce': True,  # Whether to use deuce rule (must win by 2 points)
         'team_winning_points': 3,  # Number of points (matches) to win a TeamMatch
         'play_all_sets': False,  # Must play all sets, overrides winning_sets setting
         'play_all_matches': False,  # Must play all matches, overrides team_winning_points setting

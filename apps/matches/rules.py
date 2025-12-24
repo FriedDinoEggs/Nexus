@@ -56,6 +56,19 @@ class BaseScoringStrategy[T: BaseMatch](ABC):
             )
         return 'Unknown A', 'Unknown B'
 
+    def _is_set_completed(self, score_a: int, score_b: int) -> bool:
+        """Determine if a single set is completed based on deuce rules"""
+        set_winning_points = self.rule_config.get('set_winning_points', 11)
+        use_deuce = self.rule_config.get('use_deuce', True)
+
+        higher = max(score_a, score_b)
+        diff = abs(score_a - score_b)
+
+        if not use_deuce:
+            return higher >= set_winning_points
+        else:
+            return higher >= set_winning_points and diff >= 2
+
     def _build_result(
         self,
         match_obj: BaseMatch,
@@ -127,11 +140,12 @@ class PlayerScoringStrategy(BaseScoringStrategy[PlayerMatch]):
 
         # Calculate current score
         for match_set in sets:
-            total_played += 1
-            if match_set.score_a > match_set.score_b:
-                score_a += 1
-            elif match_set.score_b > match_set.score_a:
-                score_b += 1
+            if self._is_set_completed(match_set.score_a, match_set.score_b):
+                total_played += 1
+                if match_set.score_a > match_set.score_b:
+                    score_a += 1
+                elif match_set.score_b > match_set.score_a:
+                    score_b += 1
 
         is_completed = False
         winner = None
@@ -173,38 +187,52 @@ class PlayerScoringStrategy(BaseScoringStrategy[PlayerMatch]):
 class TeamScoringStrategy(BaseScoringStrategy[TeamMatch]):
     """Team match strategy: Determine race-to-win or play-all matches based on configuration"""
 
-    def _sum_sub_matches(self, all_player_matches) -> tuple[int, int, int]:
-        """Calculate total scores and finished match count"""
-        score_a, score_b, total_finished = 0, 0, 0
+    def _sum_sub_matches(self, all_player_matches) -> tuple[int, int, int, int, int]:
+        """
+        Calculate total scores and finished match count.
+        Returns: (matches_a, matches_b, sets_a, sets_b, total_finished)
+        """
+        m_a, m_b, s_a, s_b, total_finished = 0, 0, 0, 0, 0
         for player_match in all_player_matches:
             strategy = ScoringStrategyFactory.get_strategy(player_match, self.rule_config)
             result = strategy.evaluate(player_match)
 
+            # Accumulate total sets won regardless of match completion
+            s_a += result.score_summary.get('score_a', 0)
+            s_b += result.score_summary.get('score_b', 0)
+
             if result.is_completed:
                 total_finished += 1
                 if result.winner == BaseMatch.WinnerChoices.TEAM_A:
-                    score_a += 1
+                    m_a += 1
                 elif result.winner == BaseMatch.WinnerChoices.TEAM_B:
-                    score_b += 1
-        return score_a, score_b, total_finished
+                    m_b += 1
+        return m_a, m_b, s_a, s_b, total_finished
 
     def evaluate(self, match_obj: TeamMatch) -> MatchResult:
         team_winning_points = self.rule_config.get('team_winning_points', 3)
         play_all_matches = self.rule_config.get('play_all_matches', False)
+        count_points_by_sets = self.rule_config.get('count_points_by_sets', False)
 
         all_player_matches = match_obj.player_matches.all().order_by('number')
         total_scheduled = all_player_matches.count()
 
-        score_a, score_b, total_finished = self._sum_sub_matches(all_player_matches)
+        m_a, m_b, s_a, s_b, total_finished = self._sum_sub_matches(all_player_matches)
+
+        # Select score based on configuration
+        if count_points_by_sets:
+            score_a, score_b = s_a, s_b
+        else:
+            score_a, score_b = m_a, m_b
 
         is_completed = False
         winner = None
 
         if not play_all_matches:
-            if score_a >= team_winning_points:
+            if m_a >= team_winning_points:
                 is_completed = True
                 winner = BaseMatch.WinnerChoices.TEAM_A
-            elif score_b >= team_winning_points:
+            elif m_b >= team_winning_points:
                 is_completed = True
                 winner = BaseMatch.WinnerChoices.TEAM_B
             elif total_finished == total_scheduled:
