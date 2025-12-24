@@ -185,7 +185,12 @@ class PlayerMatchParticipant(TimeStampedModel):
                 fields=['player_match', 'player'],
                 name='%(app_label)s_%(class)s_unique_participant',
                 violation_error_message='This player already exists for this match',
-            )
+            ),
+            CheckConstraint(
+                condition=Q(position__in=[1, 2]),
+                name='%(app_label)s_%(class)s_check_position_1_or_2',
+                violation_error_message='Position must be 1 or 2',
+            ),
         ]
 
     def __str__(self):

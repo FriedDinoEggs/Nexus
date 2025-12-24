@@ -158,6 +158,7 @@ class "PlayerMatchParticipant" as PlayerMatchParticipant {
     + position : Int {default=1}
     --
     unique_together = (player_match, player)
+    check = (position in [1, 2])
 }
 
 class "MatchTemplate" as MatchTemplate {
