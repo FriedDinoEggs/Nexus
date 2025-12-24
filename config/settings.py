@@ -22,9 +22,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 
-
-
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = os.getenv('ALLOW_HOST', '').split(',')
 
 
 # Application definition
@@ -44,6 +42,7 @@ INSTALLED_APPS = [
     'apps.teams',
     'apps.events',
     'apps.matches',
+    'drf_spectacular',
 ]
 
 MIDDLEWARE = [
@@ -164,18 +163,52 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         # 'rest_framework_simplejwt.authentication.JWTAuthentication',
         'apps.users.authentication.CustomJWTAuthentication',
-        'rest_framework.authentication.SessionAuthentication',
+        # 'rest_framework.authentication.SessionAuthentication',
     ),
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 10,
 
     'DEFAULT_THROTTLE_RATES': {
         'refresh': '10/minute',  # 限制refresh頻率，避免頻繁refresh造成DB壓力
+    },
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+}
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Nexus Project API',
+    'DESCRIPTION': '龍濱會員賽事系統',
+    'VERSION': '0.0.1',
+    'SERVE_INCLUDE_SCHEMA': False,
+
+    "SWAGGER_UI_SETTINGS": {
+        "deepLinking": True,
+        "persistAuthorization": True,
+        "displayOperationId": True,
+    },
+    'COMPONENT_SPLIT_REQUEST': True,
+
+    
+    'SECURITY': [{'jwt_auth': []}],
+    'APPEND_COMPONENTS': {
+        'securitySchemes': {
+            'jwt_auth': {
+                'type': 'oauth2',
+                'description': '輸入帳密登入取得 Token',
+                'flows': {
+                    'password': {
+                        'tokenUrl': '/api/v1/users/login/',
+                        'scopes': {},
+                    }
+                }
+            }
+        }
     }
 }
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': datetime.timedelta(minutes=10),
+    'TOKEN_REFRESH_SERIALIZER': 'apps.users.serializers.MyToeknRefreshSerializer',
+    'TOKEN_OBTAIN_SERIALIZER': 'apps.users.serializers.MyTokenObtainPairSerializer',
+    'ACCESS_TOKEN_LIFETIME': datetime.timedelta(minutes=30),
     'REFRESH_TOKEN_LIFETIME': datetime.timedelta(hours=2),
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,

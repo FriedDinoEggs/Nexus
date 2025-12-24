@@ -65,7 +65,7 @@ class "Location" as Location {
 ' ------ 隊伍 ------
 
 class "Team" as Team {
-    + team_name : String
+    + name : String
     + creator_id : <<FK>>
     + leader_id : <<FK>> {nullable}
     + coach_id : <<FK>> {nullable}

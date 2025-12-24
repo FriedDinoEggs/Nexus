@@ -37,10 +37,12 @@ class TeamService:
         """
         Adds a user to the team.
         """
-        if TeamMember.objects.filter(team=team, user=user).exists():
-            raise ValidationError(f'User {user} is already a member of team {team}.')
+        from django.db import IntegrityError
 
-        return TeamMember.objects.create(team=team, user=user, note=note)
+        try:
+            return TeamMember.objects.create(team=team, user=user, note=note)
+        except IntegrityError:
+            raise ValidationError(f'User {user} is already a member of team {team}.') from None
 
     @staticmethod
     @transaction.atomic

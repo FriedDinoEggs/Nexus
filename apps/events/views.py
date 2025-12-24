@@ -1,1 +1,144 @@
-# Create your views here.
+from rest_framework import permissions, status, viewsets
+from rest_framework.decorators import action
+from rest_framework.views import Response
+
+from apps.users.permissions import (
+    IsEventManagerGroup,
+    IsOwnerObject,
+    IsSuperAdminGroup,
+)
+
+from .models import Event, EventTeam, EventTeamMember, LunchOption
+from .serializers import (
+    EventSerializer,
+    EventTeamMemberSerializer,
+    EventTeamSerializer,
+    LunchOptionSerializer,
+)
+
+
+class EventViewSet(viewsets.ModelViewSet):
+    queryset = (
+        Event.objects.all()
+        .select_related('location')
+        .prefetch_related('teams', 'event_teams', 'lunch_options')
+    )
+    serializer_class = EventSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    lookup_url_kwarg = 'id'
+
+    def get_permissions(self):
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+            return [(IsEventManagerGroup | IsSuperAdminGroup)()]
+        return super().get_permissions()
+
+
+class LunchOptionsViewSet(viewsets.ModelViewSet):
+    queryset = LunchOption.objects.all().select_related('event')
+    serializer_class = LunchOptionSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    lookup_url_kwarg = 'id'
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+
+        event_id = self.kwargs.get('event_id')
+        if event_id:
+            queryset = queryset.filter(event_id=event_id)
+
+        return queryset
+
+    def get_permissions(self):
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+            return [(IsEventManagerGroup | IsSuperAdminGroup)()]
+
+        return super().get_permissions()
+
+
+class EventTeamViewSet(viewsets.ModelViewSet):
+    queryset = EventTeam.objects.all().select_related('event', 'team', 'coach', 'leader')
+    serializer_class = EventTeamSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    lookup_url_kwarg = 'id'
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+
+        event_id = self.kwargs.get('event_id')
+
+        if event_id:
+            queryset = queryset.filter(event_id=event_id)
+
+        return queryset
+
+    def get_permissions(self):
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+            return [(IsEventManagerGroup | IsSuperAdminGroup)()]
+        return super().get_permissions()
+
+    @action(detail=False, methods=['GET'], permission_classes=[permissions.IsAuthenticated])
+    def me(self, request):
+        queryset = super().get_queryset()
+        queryset = queryset.filter(roster__user=self.request.user)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+
+class EventTeamMemberViewSet(viewsets.ModelViewSet):
+    queryset = (
+        EventTeamMember.objects.all()
+        .select_related('event_team__event', 'event_team__team', 'user')
+        .prefetch_related('lunch_orders__option')
+    )
+    serializer_class = EventTeamMemberSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    lookup_url_kwarg = 'id'
+
+    def get_permissions(self):
+        # 只開放 list / create / destroy 給 MemberGroup 顯示使用
+        if self.action in ['retrieve', 'update', 'partial_update', 'create', 'destroy']:
+            return [(IsSuperAdminGroup | IsEventManagerGroup | IsOwnerObject)()]
+
+        # list create
+        return super().get_permissions()
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+
+        event_id = self.kwargs.get('event_id')
+        event_team_id = self.kwargs.get('event_team_id')
+
+        if event_team_id:
+            filters = {'event_team_id': event_team_id}
+            if event_id:
+                filters['event_team__event_id'] = event_id
+            queryset = queryset.filter(**filters)
+
+        user_param = self.request.query_params.get('user')
+        if user_param:
+            if user_param == 'me':
+                queryset = queryset.filter(user=self.request.user)
+            else:
+                queryset = queryset.filter(user=user_param)
+
+        return queryset
+
+    def create(self, request, *args, **kwargs):
+        # FIX: 報名權限只能報名自己，需要修改成管理員可以報名他人
+        data = request.data.copy()
+        data['event_team'] = self.kwargs.get('event_team_id')
+        data['user'] = request.user.id
+
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+    def perform_create(self, serializer):
+        serializer.save()

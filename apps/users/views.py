@@ -1,15 +1,18 @@
 import logging
 
 from django.contrib.auth import get_user_model
+from drf_spectacular.utils import extend_schema
 from rest_framework import generics, viewsets
+from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.throttling import SimpleRateThrottle
+from rest_framework.views import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenBlacklistView, TokenRefreshView
 
 from .authentication import CustomJWTAuthentication
 from .permissions import IsEventManagerGroup, IsOwnerObject, IsSuperAdminGroup
-from .serializers import UserProfileSerializer, UserRegistrationSerializer
+from .serializers import MyToeknRefreshSerializer, UserProfileSerializer, UserRegistrationSerializer
 from .services import BlackListService
 
 # Create your views here.
@@ -18,12 +21,14 @@ User = get_user_model()
 logger = logging.getLogger(__name__)
 
 
+@extend_schema(tags=['v1', 'Users'])
 class UserRegisterView(generics.CreateAPIView):
     queryset = User.objects.none()
     serializer_class = UserRegistrationSerializer
     permission_classes = [AllowAny]
 
 
+@extend_schema(tags=['v1', 'Users'])
 class UserProfileViewSet(viewsets.ModelViewSet):
     serializer_class = UserProfileSerializer
     authentication_classes = [CustomJWTAuthentication]
@@ -58,6 +63,11 @@ class UserProfileViewSet(viewsets.ModelViewSet):
 
         return [permission() for permission in permission_classes]
 
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
+    def me(self, request):
+        serializer = self.get_serializer(request.user)
+        return Response(serializer.data)
+
     def perform_destroy(self, instance):
         instance.is_active = False
         suffix = f'.deleted.{instance.pk}'
@@ -66,6 +76,7 @@ class UserProfileViewSet(viewsets.ModelViewSet):
         instance.save()
 
 
+@extend_schema(tags=['v1', 'Users'])
 class CustomJWTLogoutView(TokenBlacklistView):
     permission_classes = [IsAuthenticated]
     authentication_classes = [CustomJWTAuthentication]
@@ -91,5 +102,7 @@ class IPBaseThrottle(SimpleRateThrottle):
             return f'throttle_refresh_{self.get_ident(request)}'
 
 
+@extend_schema(tags=['v1', 'Users'])
 class CustomTokenRefreshView(TokenRefreshView):
+    serializer_class = MyToeknRefreshSerializer
     throttle_classes = [IPBaseThrottle]
