@@ -224,6 +224,7 @@ class MatchScoringTests(TestCase):
 
         # Evaluation
         from apps.matches.rules import ScoringStrategyFactory
+
         strategy = ScoringStrategyFactory.get_strategy(self.team_match, self.config.rule_config)
         result = strategy.evaluate(self.team_match)
 
@@ -266,4 +267,3 @@ class MatchScoringTests(TestCase):
         pm.refresh_from_db()
         self.assertEqual(pm.status, BaseMatch.StatusChoices.COMPLETED)
         self.assertEqual(pm.winner, BaseMatch.WinnerChoices.TEAM_A)
-
