@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.db import transaction
 
@@ -38,18 +39,54 @@ class MatchService:
             for item in template.items.all()
         ]
 
-        team_match = TeamMatch.objects.create(team_a=team_a, team_b=team_b, number=match_number)
+        # Distributed Lock using Redis to prevent race conditions on match_number
+        lock_key = f'lock:team_match_create:{event.id}:{match_number}'
 
-        player_matches = [
-            PlayerMatch(
-                team_match=team_match,
-                number=item['number'],
-                format=item['format'],
-                requirement=item['requirement'],
-            )
-            for item in items_to_create
-        ]
-        PlayerMatch.objects.bulk_create(player_matches)
+        if hasattr(cache, 'lock'):
+            lock = cache.lock(lock_key, timeout=10, blocking_timeout=5, sleep=0.1)
+
+            if lock.acquire():
+                try:
+                    if TeamMatch.objects.filter(team_a__event=event, number=match_number).exists():
+                        raise ValidationError(
+                            f'Match number {match_number} '
+                            f'is already assigned for event {event.name}.'
+                        )
+
+                    team_match = TeamMatch.objects.create(
+                        team_a=team_a, team_b=team_b, number=match_number
+                    )
+                    player_matches = [
+                        PlayerMatch(
+                            team_match=team_match,
+                            number=item['number'],
+                            format=item['format'],
+                            requirement=item['requirement'],
+                        )
+                        for item in items_to_create
+                    ]
+                    PlayerMatch.objects.bulk_create(player_matches)
+
+                    transaction.on_commit(lambda: lock.release())
+
+                except Exception as e:
+                    lock.release()
+                    raise e
+
+            else:
+                raise ValidationError(
+                    'System is busy processing this match number. Please try again.'
+                )
+
+        else:
+            # FIX: CI環境 LocMemCache 沒有lock= = 先這樣頂一下
+            if TeamMatch.objects.filter(team_a__event=event, number=match_number).exists():
+                raise ValidationError(
+                    f'Match number {match_number} is already assigned for event {event.name}.'
+                )
+
+            team_match = TeamMatch.objects.create(team_a=team_a, team_b=team_b, number=match_number)
+
         return team_match
 
     @staticmethod
