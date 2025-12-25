@@ -155,9 +155,11 @@ class "PlayerMatchParticipant" as PlayerMatchParticipant {
     + player_match : << FK PlayerMatch >>
     + player : << FK to User >>
     --
+    + side : Enum {A, B}
     + position : Int {default=1}
     --
     unique_together = (player_match, player)
+    unique_together = (player_match, side, position)
     check = (position in [1, 2])
 }
 

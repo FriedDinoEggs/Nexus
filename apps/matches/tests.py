@@ -181,3 +181,89 @@ class MatchScoringTests(TestCase):
         # Win 3 sets
         for i in range(1, 4):
             MatchService.record_set_score(player_match, i, score_a, score_b)
+
+    def test_team_match_count_by_sets(self):
+        """
+        Test TeamMatch score shows set totals when count_points_by_sets is True.
+        Scenario:
+        Match 1: A wins 3-2 (3 sets for A, 2 for B)
+        Match 2: B wins 3-1 (1 set for A, 3 for B)
+        Total should be 4:5
+        """
+        self.config.rule_config['count_points_by_sets'] = True
+        self.config.rule_config['play_all_matches'] = True
+        self.config.save()
+
+        # Match 1: A wins 3-2 (A:3, B:2)
+        pm1 = self.player_matches[0]
+        MatchService.record_set_score(pm1, 1, 11, 5)  # A
+        MatchService.record_set_score(pm1, 2, 5, 11)  # B
+        MatchService.record_set_score(pm1, 3, 11, 5)  # A
+        MatchService.record_set_score(pm1, 4, 5, 11)  # B
+        MatchService.record_set_score(pm1, 5, 11, 5)  # A
+
+        # Match 2: B wins 3-1 (A:1, B:3)
+        pm2 = self.player_matches[1]
+        MatchService.record_set_score(pm2, 1, 5, 11)  # B
+        MatchService.record_set_score(pm2, 2, 11, 5)  # A
+        MatchService.record_set_score(pm2, 3, 5, 11)  # B
+        MatchService.record_set_score(pm2, 4, 5, 11)  # B
+
+        # Complete pm3, pm4, pm5 as draws (0-0 sets) if possible, but let's give them some scores.
+        # pm3: 0-0 (for simplicity, but record_set_score needs winners usually for matches)
+        # Match 3: B wins 3-0 (A:0, B:3)
+        self._win_player_match(self.player_matches[2], 'B')
+        # Match 4: A wins 3-0 (A:3, B:0)
+        self._win_player_match(self.player_matches[3], 'A')
+        # Match 5: B wins 3-0 (A:0, B:3)
+        self._win_player_match(self.player_matches[4], 'B')
+
+        # Totals:
+        # A sets: 3 (pm1) + 1 (pm2) + 0 (pm3) + 3 (pm4) + 0 (pm5) = 7
+        # B sets: 2 (pm1) + 3 (pm2) + 3 (pm3) + 0 (pm4) + 3 (pm5) = 11
+
+        # Evaluation
+        from apps.matches.rules import ScoringStrategyFactory
+
+        strategy = ScoringStrategyFactory.get_strategy(self.team_match, self.config.rule_config)
+        result = strategy.evaluate(self.team_match)
+
+        self.assertTrue(result.is_completed)
+        self.assertEqual(result.score_summary['score_a'], 7)
+        self.assertEqual(result.score_summary['score_b'], 11)
+        self.assertEqual(result.winner, BaseMatch.WinnerChoices.TEAM_B)
+
+    def test_player_match_deuce(self):
+        """Test deuce logic: must win by 2 points when use_deuce is True"""
+        self.config.rule_config['use_deuce'] = True
+        self.config.rule_config['set_winning_points'] = 11
+        self.config.rule_config['winning_sets'] = 1
+        self.config.save()
+
+        pm = self.player_matches[0]
+
+        # Score 11:10 -> Not completed yet
+        MatchService.record_set_score(pm, 1, 11, 10)
+        pm.refresh_from_db()
+        self.assertEqual(pm.status, BaseMatch.StatusChoices.IN_PROGRESS)
+
+        # Score 12:10 -> Completed
+        MatchService.record_set_score(pm, 1, 12, 10)
+        pm.refresh_from_db()
+        self.assertEqual(pm.status, BaseMatch.StatusChoices.COMPLETED)
+        self.assertEqual(pm.winner, BaseMatch.WinnerChoices.TEAM_A)
+
+    def test_player_match_no_deuce(self):
+        """Test no-deuce logic: ends exactly at target score"""
+        self.config.rule_config['use_deuce'] = False
+        self.config.rule_config['set_winning_points'] = 11
+        self.config.rule_config['winning_sets'] = 1
+        self.config.save()
+
+        pm = self.player_matches[0]
+
+        # Score 11:10 -> Completed immediately
+        MatchService.record_set_score(pm, 1, 11, 10)
+        pm.refresh_from_db()
+        self.assertEqual(pm.status, BaseMatch.StatusChoices.COMPLETED)
+        self.assertEqual(pm.winner, BaseMatch.WinnerChoices.TEAM_A)

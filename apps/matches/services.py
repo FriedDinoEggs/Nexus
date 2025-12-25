@@ -139,11 +139,17 @@ class MatchService:
             raise ValueError(f'Player {player} is not registered in this event.')
 
         player_event_team = membership.event_team
-        if player_event_team not in [team_match.team_a, team_match.team_b]:
+        if player_event_team == team_match.team_a:
+            side = PlayerMatchParticipant.SideChoices.SIDE_A
+        elif player_event_team == team_match.team_b:
+            side = PlayerMatchParticipant.SideChoices.SIDE_B
+        else:
             raise ValueError(f'Player {player} does not belong to either competing team.')
 
         participant, _ = PlayerMatchParticipant.objects.update_or_create(
-            player_match=player_match, player=player, defaults={'position': position}
+            player_match=player_match,
+            player=player,
+            defaults={'position': position, 'side': side},
         )
         return participant
 
