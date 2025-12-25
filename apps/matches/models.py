@@ -1,6 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.db import models
 from django.db.models import CheckConstraint, F, Q, UniqueConstraint
+from django.db.models.functions import Greatest, Least
 
 from apps.core.models import SoftDeleteModel, TimeStampedModel
 from apps.events.models import Event, EventTeam
@@ -57,10 +58,14 @@ class TeamMatch(BaseMatch):
                 name='%(app_label)s_%(class)s_check_team_a_ne_team_b',
                 violation_error_message='Team A and Team B must be different.',
             ),
+            # e04有地雷！！！
+            # postgreSQL Lease Greatest: 回傳 non-null 的最小/最大值，若全都 null 回傳 null
+            # SQLite Oracle MySQl : Lease Greatest 如果有任何 expression 是 null 回傳 null
             UniqueConstraint(
-                fields=['number'],
-                name='%(app_label)s_%(class)s_unique_number',
-                violation_error_message='Team match number must be unique',
+                Least('team_a', 'team_b'),
+                Greatest('team_a', 'team_b'),
+                name='%(app_label)s_%(class)s_unique_matchup',
+                violation_error_message='This team matchup already exists in the system.',
             ),
         ]
 
