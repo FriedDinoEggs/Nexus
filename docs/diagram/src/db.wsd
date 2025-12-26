@@ -109,6 +109,18 @@ class "EventTeamMember" as EventTeamMember {
     { unique_together = ('event_team_id', 'user_id') }
 }
 
+class "LunchOption" as LunchOption {
+    + event_id : << FK to Event >>
+    + name : String
+}
+
+class "RegistrationLunchOrder" as RegistrationLunchOrder {
+    + member_id : << FK to EventTeamMember >>
+    + option_id : << FK to LunchOption >>
+    + quantity : Int
+    + note : Text
+}
+
 '-- Match Models
 
 abstract class "BaseMatchConfiguration" as BaseMatchConfiguration {
@@ -199,6 +211,8 @@ TimeStampedModel <|-- MatchTemplateItem
 TimeStampedModel <|-- MatchSet
 TimeStampedModel <|-- PlayerMatchParticipant
 TimeStampedModel <|-- EventMatchConfiguration
+TimeStampedModel <|-- LunchOption
+TimeStampedModel <|-- RegistrationLunchOrder
 
 SoftDeleteModel <|-- Team 
 SoftDeleteModel <|-- Event
@@ -238,5 +252,8 @@ User "1" -- "*" PlayerMatchParticipant
 MatchTemplate "1" -- "*" MatchTemplateItem
 MatchTemplate "1" -- "*" EventMatchConfiguration
 Event "1" -- "1" EventMatchConfiguration
+Event "1" -- "*" LunchOption
+EventTeamMember "1" -- "*" RegistrationLunchOrder
+LunchOption "1" -- "*" RegistrationLunchOrder
 
 @enduml

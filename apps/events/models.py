@@ -113,3 +113,23 @@ class EventTeamMember(TimeStampedModel):
             .exists()
         ):
             raise ValidationError('User is already registered in another team for this event.')
+
+
+class LunchOption(TimeStampedModel):
+    event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name='lunch_options')
+    name = models.CharField(max_length=64)
+
+    def __str__(self):
+        return f'{self.name} ({self.event.name})'
+
+
+class RegistrationLunchOrder(TimeStampedModel):
+    member = models.ForeignKey(
+        EventTeamMember, on_delete=models.CASCADE, related_name='lunch_orders'
+    )
+    option = models.ForeignKey(LunchOption, on_delete=models.CASCADE)
+    quantity = models.PositiveIntegerField(default=1)
+    note = models.TextField(default='', blank=True)
+
+    def __str__(self):
+        return f'{self.member.user.full_name}: {self.quantity} x {self.option.name}'
