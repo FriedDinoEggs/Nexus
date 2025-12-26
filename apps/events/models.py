@@ -102,6 +102,14 @@ class EventTeamMember(TimeStampedModel):
         return f'{self.user.full_name} in ({self.event_team})'
 
     def clean(self):
+        """
+        Validate that the associated user is not already assigned to a different team for the same event.
+        
+        If the related event cannot be determined (missing relation or deleted), validation is skipped. Raises a ValidationError when another EventTeamMember exists for the same event and user, excluding this instance.
+         
+        Raises:
+            ValidationError: If the user is already registered in another team for the event.
+        """
         try:
             event = self.event_team.event
         except (ObjectDoesNotExist, AttributeError, ValueError):
@@ -120,6 +128,12 @@ class LunchOption(TimeStampedModel):
     name = models.CharField(max_length=64)
 
     def __str__(self):
+        """
+        Provide a human-readable representation of the lunch option including its event.
+        
+        Returns:
+            str: The lunch option formatted as "<name> (<event_name>)".
+        """
         return f'{self.name} ({self.event.name})'
 
 
@@ -132,4 +146,10 @@ class RegistrationLunchOrder(TimeStampedModel):
     note = models.TextField(default='', blank=True)
 
     def __str__(self):
+        """
+        Provide a human-readable representation of the lunch order.
+        
+        Returns:
+            A string in the format "<member.user.full_name>: <quantity> x <option.name>" representing the ordering member, the quantity ordered, and the lunch option.
+        """
         return f'{self.member.user.full_name}: {self.quantity} x {self.option.name}'

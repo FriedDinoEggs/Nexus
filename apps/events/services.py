@@ -28,13 +28,15 @@ class EventService:
         lunch_options: list[str] = None,
     ) -> Event:
         """
-        Creates a new event with the specified type.
-            name: The name of the event.
-            event_type: One of Event.TypeChoices (e.g., 'TN', 'LG', 'FR').
-            start_time: (Optional) Datetime object.
-            end_time: (Optional) Datetime object.
-            location: (Optional) Location instance.
-            lunch_options: (Optional) List of lunch option names.
+        Create an Event and, if provided, create associated LunchOption records for it.
+        
+        If `lunch_options` is provided, a LunchOption is created for each name in the list and linked to the created event.
+        
+        Parameters:
+            lunch_options (list[str], optional): Names of lunch options to create and associate with the event.
+        
+        Returns:
+            Event: The created Event instance.
         """
 
         event = Event(
@@ -56,11 +58,21 @@ class EventService:
         *, member: EventTeamMember, lunch_orders: list[dict] = None
     ) -> list[RegistrationLunchOrder]:
         """
-        Creates lunch orders for a specific event team member.
-        lunch_orders example: [
-            {'option_id': 1, 'quantity': 2, 'note': 'No spicy'},
-            {'option_id': 2, 'quantity': 1, 'note': 'Extra water'}
-        ]
+        Create registration lunch orders for an EventTeamMember from provided order descriptions.
+        
+        Each entry in `lunch_orders` must reference a lunch option that belongs to the member's event. When valid orders are provided, corresponding RegistrationLunchOrder records are created in bulk.
+        
+        Parameters:
+            lunch_orders (list[dict] | None): Optional list of order dictionaries. Each dictionary should contain:
+                - 'option_id' (int): ID of a LunchOption belonging to the event.
+                - 'quantity' (int, optional): Number of portions (defaults to 1).
+                - 'note' (str, optional): Free-text note for the order (defaults to empty string).
+        
+        Returns:
+            list[RegistrationLunchOrder]: The list of created RegistrationLunchOrder instances; empty if no orders were created.
+        
+        Raises:
+            ValidationError: If any provided `option_id` does not belong to the member's event.
         """
         created_orders = []
 
@@ -93,7 +105,18 @@ class EventService:
         *, event: Event, team: Team, status=EventTeam.StatusChoices.APPROVED
     ) -> EventTeam:
         """
-        Registers a team to an event.
+        Register a team for an event.
+        
+        Parameters:
+            event (Event): Event to register the team for.
+            team (Team): Team being registered.
+            status (EventTeam.StatusChoices | str): Registration status to assign; defaults to EventTeam.StatusChoices.APPROVED.
+        
+        Returns:
+            EventTeam: The created EventTeam registration record.
+        
+        Raises:
+            ValidationError: If the team is already registered for the event or the created record fails validation.
         """
         try:
             event_team = EventTeam(
@@ -113,9 +136,22 @@ class EventService:
         *, event_team: EventTeam, user, is_player=True, is_coach=False, is_staff=False
     ) -> EventTeamMember:
         """
-        Adds a user to a specific EventTeam roster.
-        Uses select_for_update on the user to prevent concurrent registrations
-        across different teams in the same event.
+        Add a user to an EventTeam roster.
+        
+        Acquires a row-level lock on the user to prevent concurrent cross-team registrations, validates the new roster membership, and saves it.
+        
+        Parameters:
+            event_team (EventTeam): The team registration to add the user to.
+            user (User): The user to add to the roster.
+            is_player (bool): Whether the user is a player on the team.
+            is_coach (bool): Whether the user is a coach on the team.
+            is_staff (bool): Whether the user is staff for the team.
+        
+        Returns:
+            EventTeamMember: The created EventTeamMember instance.
+        
+        Raises:
+            ValidationError: If the membership is invalid (model validation) or the user is already in the team's roster.
         """
         try:
             # Lock the user record to prevent race conditions during cross-team validation
