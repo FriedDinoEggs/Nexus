@@ -1,5 +1,5 @@
 from django.contrib.auth import get_user_model
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.db import IntegrityError, transaction
 
 from apps.teams.models import Team
@@ -65,7 +65,11 @@ class EventService:
         created_orders = []
 
         if lunch_orders:
-            event = member.event_team.event
+            try:
+                event = member.event_team.event
+            except (AttributeError, ObjectDoesNotExist):
+                raise ValidationError('This member is not associated with a valid event.') from None
+
             valid_option_ids = set(event.lunch_options.values_list('id', flat=True))
 
             for order in lunch_orders:
