@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import CheckConstraint, F, Q, UniqueConstraint
 from django.db.models.functions import Greatest, Least
@@ -72,6 +73,15 @@ class TeamMatch(BaseMatch):
     def __str__(self):
         return f'Team Match number: {self.number}'
 
+    def clean(self):
+        if self.team_a and self.team_b:
+            if self.team_a.event != self.team_b.event:
+                raise ValidationError('Both teams must belong to the same event.')
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
     @property
     def full_display_name(self) -> str:
         name_a = self.team_a.team.name if self.team_a else 'Unknown'
@@ -127,6 +137,9 @@ class PlayerMatch(BaseMatch, BaseMatchConfiguration):
 class MatchTemplate(TimeStampedModel):
     name = models.CharField(max_length=128, verbose_name='Template Name')
     creator = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
 
     def __str__(self):
         return self.name

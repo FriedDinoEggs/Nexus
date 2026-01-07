@@ -138,3 +138,18 @@ class EventService:
             return member
         except IntegrityError:
             raise ValidationError("User is already in this team's roster.") from None
+
+    @staticmethod
+    @transaction.atomic
+    def del_team_member(*, event_team: EventTeam, user: User):
+        event_team.roster.filter(user=user).delete()
+
+    @staticmethod
+    def get_user_event_teams(*, user_id) -> EventTeam:
+        queryset = (
+            EventTeam.objects.filter(roster__user_id=user_id)
+            .select_related('event', 'team', 'coach', 'leader')
+            .distinct()
+        )
+
+        return queryset

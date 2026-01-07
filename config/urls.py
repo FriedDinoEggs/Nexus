@@ -17,8 +17,58 @@ Including another URLconf
 
 from django.contrib import admin
 from django.urls import include, path
+from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
+
+# from django.db.models import lookups
+from rest_framework.routers import DefaultRouter
+from rest_framework_nested import routers
+
+from apps.events.views import (
+    EventTeamMemberViewSet,
+    EventTeamViewSet,
+    EventViewSet,
+    LunchOptionsViewSet,
+    # EventTeamEnrollViewSet,
+)
+
+router = DefaultRouter()
+router.register(r'events', EventViewSet, basename='events')
+router.register(r'event-teams', EventTeamViewSet, basename='event-teams')
+
+event_team_router = routers.NestedSimpleRouter(router, r'events', lookup='event')
+event_team_router.register(r'teams', EventTeamViewSet, basename='event-teams-nested')
+event_team_router.register(
+    r'lunch-options', LunchOptionsViewSet, basename='event-lunch-options-nested'
+)
+
+team_members_router = routers.NestedSimpleRouter(router, r'event-teams', lookup='event_team')
+team_members_router.register(r'members', EventTeamMemberViewSet, basename='members-nested')
+
+
+# router.register(r'Team_match', TeamMatchViewSet, basename='team_match')
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/v1/users/', include(('apps.users.urls', 'users'), namespace='v1')),
+    path(
+        'api/v1/',
+        include(
+            (
+                [
+                    path('users/', include(('apps.users.urls', 'users'))),
+                    path('', include(router.urls)),
+                    path('', include(event_team_router.urls)),
+                    path('', include(team_members_router.urls)),
+                    # path('', include(event_team_enroll_router.urls)),
+                ],
+                'v1',
+            ),
+            namespace='v1',
+        ),
+    ),
+    path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
+    path(
+        'api/schema/swagger-ui/',
+        SpectacularSwaggerView.as_view(url_name='schema'),
+        name='swagger-ui',
+    ),
 ]

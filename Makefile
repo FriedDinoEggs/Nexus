@@ -39,7 +39,7 @@ lint-fix:
 
 
 test:
-	$(MANAGE) test
+	$(MANAGE) test 
 
 ci-test: lint format 
 

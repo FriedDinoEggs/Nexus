@@ -22,6 +22,81 @@ User = get_user_model()
 class MatchService:
     @staticmethod
     @transaction.atomic
+    def create_match_template(
+        *, name: str, items_data: list[dict], creator: User | None = None
+    ) -> MatchTemplate:
+        """Create a match template with its items."""
+        template = MatchTemplate.objects.create(name=name, creator=creator)
+        items = [
+            MatchTemplateItem(
+                template=template,
+                number=item['number'],
+                format=item.get('format', MatchTemplateItem.MatchFormatChoice.SINGLE),
+                requirement=item.get('requirement', ''),
+            )
+            for item in items_data
+        ]
+        MatchTemplateItem.objects.bulk_create(items)
+        return template
+
+    @staticmethod
+    @transaction.atomic
+    def update_match_template(
+        *, template: MatchTemplate, name: str | None = None, items_data: list[dict] | None = None
+    ) -> MatchTemplate:
+        """Update a match template and its items."""
+        if name is not None:
+            template.name = name
+            template.save()
+
+        if items_data is not None:
+            template.items.all().delete()
+            items = [
+                MatchTemplateItem(
+                    template=template,
+                    number=item['number'],
+                    format=item.get('format', MatchTemplateItem.MatchFormatChoice.SINGLE),
+                    requirement=item.get('requirement', ''),
+                )
+                for item in items_data
+            ]
+            MatchTemplateItem.objects.bulk_create(items)
+
+        return template
+
+    @staticmethod
+    @transaction.atomic
+    def create_team_match_full(
+        *, team_a: EventTeam, team_b: EventTeam, match_number: int, player_matches_data: list[dict]
+    ) -> TeamMatch:
+        """Create a TeamMatch and its player lineups in one go."""
+        # 1. Initialize the TeamMatch and its player matches (empty slots) via template
+        team_match = MatchService.initialize_team_match(team_a, team_b, match_number)
+
+        # 2. Get the created player matches to assign participants
+        # We use a map for quick lookup by match number
+        pm_map = {pm.number: pm for pm in team_match.player_matches.all()}
+
+        # 3. Assign participants
+        for pm_data in player_matches_data:
+            pm_num = pm_data.get('number')
+            pm = pm_map.get(pm_num)
+            if not pm:
+                continue
+
+            for part_data in pm_data.get('participants', []):
+                MatchService.assign_player_to_match(
+                    player_match=pm,
+                    player=part_data.get('player'),
+                    position=part_data.get('position', 1),
+                    guest_name=part_data.get('player_name_backup'),
+                    side=part_data.get('side'),
+                )
+
+        return team_match
+
+    @staticmethod
+    @transaction.atomic
     def initialize_team_match(team_a: EventTeam, team_b: EventTeam, match_number: int):
         """Initialize a team match and create scheduled matches based on Event's MatchTemplate"""
         if team_a.event != team_b.event:
@@ -159,34 +234,49 @@ class MatchService:
             )
 
     @staticmethod
-    def assign_player_to_match(player_match: PlayerMatch, player: User, position: int = 1):
-        """Assign player to a specific match position and validate team eligibility"""
+    def assign_player_to_match(
+        player_match: PlayerMatch,
+        player: User | None = None,
+        position: int = 1,
+        guest_name: str | None = None,
+        side: str | None = None,
+    ):
+        """Assign player or guest to a specific match position."""
         team_match = player_match.team_match
 
         if not team_match.team_a or not team_match.team_b:
-            raise ValueError('Can not assign players to match with missing theam referenct.')
+            raise ValueError('Can not assign players to match with missing team reference.')
 
-        membership = (
-            player.eventteammember_set.filter(event_team__event=team_match.team_a.event)
-            .select_related('event_team')
-            .first()
-        )
+        if player:
+            membership = (
+                player.eventteammember_set.filter(event_team__event=team_match.team_a.event)
+                .select_related('event_team')
+                .first()
+            )
 
-        if not membership:
-            raise ValueError(f'Player {player} is not registered in this event.')
+            if not membership:
+                raise ValueError(f'Player {player} is not registered in this event.')
 
-        player_event_team = membership.event_team
-        if player_event_team == team_match.team_a:
-            side = PlayerMatchParticipant.SideChoices.SIDE_A
-        elif player_event_team == team_match.team_b:
-            side = PlayerMatchParticipant.SideChoices.SIDE_B
+            player_event_team = membership.event_team
+            if player_event_team == team_match.team_a:
+                side = PlayerMatchParticipant.SideChoices.SIDE_A
+            elif player_event_team == team_match.team_b:
+                side = PlayerMatchParticipant.SideChoices.SIDE_B
+            else:
+                raise ValueError(f'Player {player} does not belong to either competing team.')
         else:
-            raise ValueError(f'Player {player} does not belong to either competing team.')
+            if not guest_name:
+                raise ValueError('Either player or guest_name must be provided.')
+            if not side:
+                raise ValueError('Side must be provided for guest players.')
 
         participant, _ = PlayerMatchParticipant.objects.update_or_create(
             player_match=player_match,
-            player=player,
-            defaults={'position': position, 'side': side},
+            # If guest, we lookup/update by name within this match
+            # This is simplified; usually you'd want a unique identifier for guest
+            side=side,
+            position=position,
+            defaults={'player': player, 'player_name_backup': guest_name or ''},
         )
         return participant
 

@@ -1,5 +1,5 @@
 from django.contrib.auth import get_user_model
-from django.core.exceptions import ObjectDoesNotExist, ValidationError
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import CheckConstraint, F, Q, UniqueConstraint
 
@@ -55,8 +55,8 @@ class EventTeam(TimeStampedModel):
         APPROVED = 'AP', 'Approved'
         REJECT = 'RJ', 'Rejected'
 
-    event = models.ForeignKey(Event, on_delete=models.CASCADE)
-    team = models.ForeignKey(Team, on_delete=models.CASCADE)
+    event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name='event_teams')
+    team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name='event_teams')
 
     coach = models.ForeignKey(
         User, on_delete=models.SET_NULL, null=True, blank=True, related_name='coached_event_teams'
@@ -102,11 +102,12 @@ class EventTeamMember(TimeStampedModel):
         return f'{self.user.full_name} in ({self.event_team})'
 
     def clean(self):
-        try:
-            event = self.event_team.event
-        except (ObjectDoesNotExist, AttributeError, ValueError):
+        if not hasattr(self, 'event_team') or self.event_team is None:
+            return
+        if not hasattr(self, 'user') or self.user is None:
             return
 
+        event = self.event_team.event
         if (
             EventTeamMember.objects.filter(event_team__event=event, user=self.user)
             .exclude(pk=self.pk)
@@ -118,6 +119,7 @@ class EventTeamMember(TimeStampedModel):
 class LunchOption(TimeStampedModel):
     event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name='lunch_options')
     name = models.CharField(max_length=64)
+    price = models.PositiveIntegerField(default=80)
 
     def __str__(self):
         return f'{self.name} ({self.event.name})'

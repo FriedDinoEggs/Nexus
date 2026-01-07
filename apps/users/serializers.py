@@ -1,6 +1,7 @@
 from django.contrib.auth import authenticate, get_user_model
 from rest_framework import serializers
 from rest_framework.exceptions import AuthenticationFailed
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer, TokenRefreshSerializer
 
 User = get_user_model()
 
@@ -137,3 +138,25 @@ class UserLoginSerializer(serializers.Serializer):
             return user
         else:
             raise serializers.ValidationError('請提供帳號密碼')
+
+
+class MyToeknRefreshSerializer(TokenRefreshSerializer):
+    from typing import Any
+
+    def validate(self, attrs: dict[str, Any]) -> dict[str, str]:
+        data = super().validate(attrs)
+        data['access_token'] = data['access']
+        data['refresh_token'] = data['refresh']
+
+        return data
+
+
+class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
+    from typing import Any
+
+    def validate(self, attrs: dict[str, Any]) -> dict[str, str]:
+        data = super().validate(attrs)
+        data['access_token'] = data['access']
+        data['refresh_token'] = data['refresh']
+
+        return data
