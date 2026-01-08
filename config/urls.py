@@ -30,8 +30,10 @@ from apps.events.views import (
     LunchOptionsViewSet,
     # EventTeamEnrollViewSet,
 )
+from apps.teams.views import TeamViewSet
 
 router = DefaultRouter()
+router.register(r'teams', TeamViewSet, basename='teams')
 router.register(r'events', EventViewSet, basename='events')
 router.register(r'event-teams', EventTeamViewSet, basename='event-teams')
 
