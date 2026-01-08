@@ -1,3 +1,4 @@
+from django.contrib.auth import get_user_model
 from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.views import Response
@@ -15,6 +16,9 @@ from .serializers import (
     EventTeamSerializer,
     LunchOptionSerializer,
 )
+from .services import EventService
+
+User = get_user_model()
 
 
 class EventViewSet(viewsets.ModelViewSet):
@@ -129,11 +133,22 @@ class EventTeamMemberViewSet(viewsets.ModelViewSet):
         return queryset
 
     def create(self, request, *args, **kwargs):
-        # FIX: 報名權限只能報名自己，需要修改成管理員可以報名他人
+        user = None
         data = request.data.copy()
-        data['event_team'] = self.kwargs.get('event_team_id')
-        data['user'] = request.user.id
 
+        user_params = request.data.get('user', None)
+
+        if user_params:
+            is_privileged = EventService.is_privileged(user=request.user)
+
+            if is_privileged:
+                user = user_params
+
+        if not user:
+            user = self.request.user.id
+
+        data['event_team'] = self.kwargs.get('event_team_id')
+        data['user'] = user
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)

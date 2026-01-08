@@ -153,3 +153,9 @@ class EventService:
         )
 
         return queryset
+
+    @staticmethod
+    def is_privileged(user: User) -> bool:
+        is_privileged = user.groups.filter(name__in=['SuperAdmin', 'EventManager']).exists()
+
+        return is_privileged
