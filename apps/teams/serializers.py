@@ -19,15 +19,17 @@ class TeamSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         """
         Create a Team instance using validated serializer data and the provided user.
-        
+
         Parameters:
-            validated_data (dict): Serializer-validated data; must include a 'user' key and other Team fields.
-        
+          validated_data (dict): Serializer-validated data;
+            must include a 'user' key and other Team fields.
+
         Returns:
-            team: The created Team instance.
-        
+           eam: The created Team instance.
+
         Raises:
-            serializers.ValidationError: If model-level validation fails during creation (maps underlying DjangoValidationError).
+          serializers.ValidationError:
+            If model-level validation fails during creation (maps underlying DjangoValidationError).
         """
         user = validated_data.pop('user')
         try:
@@ -40,17 +42,20 @@ class TeamSerializer(serializers.ModelSerializer):
     @transaction.atomic()
     def update(self, instance, validated_data):
         """
-        Update a Team instance with the provided validated data, transferring leadership if the leader changes.
-        
+        Update a Team instance with the provided validated data,
+            transferring leadership if the leader changes.
+
         Parameters:
-            instance (Team): The Team model instance to update.
-            validated_data (dict): A mapping of validated fields to update; may include a 'leader' key to transfer leadership.
-        
+          instance (Team): The Team model instance to update.
+          validated_data (dict): A mapping of validated fields to update;
+            may include a 'leader' key to transfer leadership.
+
         Returns:
             Team: The updated Team instance.
-        
+
         Raises:
-            rest_framework.fields.ValidationError: If underlying model validation fails (original DjangoValidationError is converted).
+            rest_framework.fields.ValidationError:
+              If underlying model validation fails (original DjangoValidationError is converted).
         """
         new_leader = validated_data.pop('leader', None)
 
