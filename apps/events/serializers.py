@@ -94,7 +94,7 @@ class EventTeamSerializer(serializers.ModelSerializer):
 
 
 class LunchOptionSerializer(serializers.ModelSerializer):
-    event = PrimaryKeyRelatedField(queryset=LunchOption.objects.all(), required=False)
+    event = PrimaryKeyRelatedField(queryset=Event.objects.all(), required=False)
 
     class Meta:
         model = LunchOption
