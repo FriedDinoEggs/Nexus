@@ -60,6 +60,14 @@ class LunchOptionsViewSet(viewsets.ModelViewSet):
 
         return super().get_permissions()
 
+    def perform_create(self, serializer) -> None:
+        event_id_nested = self.kwargs.get('event_id', None)
+        if event_id_nested:
+            event = Event.objects.get(pk=event_id_nested)
+            serializer.save(event=event)
+        else:
+            serializer.save()
+
 
 class EventTeamViewSet(viewsets.ModelViewSet):
     queryset = EventTeam.objects.all().select_related('event', 'team', 'coach', 'leader')
