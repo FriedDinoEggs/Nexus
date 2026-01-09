@@ -1,5 +1,5 @@
 from django.contrib.auth import get_user_model
-from rest_framework import permissions, status, viewsets
+from rest_framework import permissions, serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.views import Response
 
@@ -63,7 +63,12 @@ class LunchOptionsViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer) -> None:
         event_id_nested = self.kwargs.get('event_id', None)
         if event_id_nested:
-            event = Event.objects.get(pk=event_id_nested)
+            try:
+                event = Event.objects.get(pk=event_id_nested)
+            except Exception as e:
+                raise serializers.ValidationError(
+                    {'event_id': f'event_id: {event_id_nested} not found', 'detail': f'{str(e)}'}
+                ) from None
             serializer.save(event=event)
         else:
             serializer.save()
