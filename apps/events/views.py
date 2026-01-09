@@ -83,6 +83,20 @@ class EventTeamViewSet(viewsets.ModelViewSet):
             return [(IsEventManagerGroup | IsSuperAdminGroup)()]
         return super().get_permissions()
 
+    def create(self, request, *args, **kwargs) -> Response:
+        data = request.data.copy()
+
+        event_id_url = self.kwargs.get('event_id')
+
+        if event_id_url:
+            data['event'] = event_id_url
+
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        header = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=header)
+
     @action(detail=False, methods=['GET'], permission_classes=[permissions.IsAuthenticated])
     def me(self, request):
         queryset = super().get_queryset()
