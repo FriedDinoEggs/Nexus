@@ -38,7 +38,7 @@ router.register(r'events', EventViewSet, basename='events')
 router.register(r'event-teams', EventTeamViewSet, basename='event-teams')
 
 event_team_router = routers.NestedSimpleRouter(router, r'events', lookup='event')
-event_team_router.register(r'teams', EventTeamViewSet, basename='event-teams-nested')
+event_team_router.register(r'event-teams', EventTeamViewSet, basename='event-teams-nested')
 event_team_router.register(
     r'lunch-options', LunchOptionsViewSet, basename='event-lunch-options-nested'
 )
