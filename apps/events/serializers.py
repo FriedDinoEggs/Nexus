@@ -1,6 +1,7 @@
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
 from rest_framework import serializers
+from rest_framework.relations import PrimaryKeyRelatedField
 
 from .models import Event, EventTeam, EventTeamMember, LunchOption, RegistrationLunchOrder
 from .services import EventService
@@ -93,6 +94,8 @@ class EventTeamSerializer(serializers.ModelSerializer):
 
 
 class LunchOptionSerializer(serializers.ModelSerializer):
+    event = PrimaryKeyRelatedField(queryset=LunchOption.objects.all(), required=False)
+
     class Meta:
         model = LunchOption
         fields = ['id', 'event', 'name', 'price']
