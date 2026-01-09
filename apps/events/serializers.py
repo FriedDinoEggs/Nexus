@@ -69,14 +69,31 @@ class EventTeamMemberSerializer(serializers.ModelSerializer):
 
         return member
 
+    @transaction.atomic()
+    def update(self, instance, validated_data):
+        lunch_orders_data = validated_data.pop('lunch_orders', [])
+
+        instance.lunch_orders.all().delete()
+
+        if lunch_orders_data:
+            orders_payload = [
+                {
+                    'option_id': order['option'].id,
+                    'quantity': order.get('quantity', 1),
+                    'note': order.get('note', ''),
+                }
+                for order in lunch_orders_data
+            ]
+            try:
+                EventService.order_member_lunches(member=instance, lunch_orders=orders_payload)
+            except DjangoValidationError as e:
+                raise serializers.ValidationError(detail=str(e)) from None
+        return super().update(instance, validated_data)
+
 
 class EventTeamSerializer(serializers.ModelSerializer):
     event_name = serializers.ReadOnlyField(source='event.name')
     team_name = serializers.ReadOnlyField(source='team.name')
-
-    # parent_lookup_kwargs = {
-    #     'event_pk': 'event__pk',
-    # }
 
     class Meta:
         model = EventTeam
