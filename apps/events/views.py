@@ -17,7 +17,6 @@ from .serializers import (
     LunchOptionSerializer,
 )
 from .services import EventService
-from apps.events import serializers
 
 User = get_user_model()
 
@@ -84,7 +83,7 @@ class EventTeamViewSet(viewsets.ModelViewSet):
             return [(IsEventManagerGroup | IsSuperAdminGroup)()]
         return super().get_permissions()
 
-    def create(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+    def create(self, request, *args, **kwargs) -> Response:
         data = request.data.copy()
 
         event_id_url = self.kwargs.get('event_id')
