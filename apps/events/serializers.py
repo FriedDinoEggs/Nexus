@@ -53,6 +53,21 @@ class EventTeamMemberSerializer(serializers.ModelSerializer):
         except DjangoValidationError as e:
             raise serializers.ValidationError(detail=str(e)) from None
 
+        self._process_lunch_data(member, lunch_orders_data)
+
+        return member
+
+    @transaction.atomic()
+    def update(self, instance, validated_data):
+        lunch_orders_data = validated_data.pop('lunch_orders', [])
+
+        instance.lunch_orders.all().delete()
+
+        self._process_lunch_data(instance, lunch_orders_data)
+
+        return super().update(instance, validated_data)
+
+    def _process_lunch_data(self, member, lunch_orders_data):
         if lunch_orders_data:
             orders_payload = [
                 {
@@ -66,29 +81,6 @@ class EventTeamMemberSerializer(serializers.ModelSerializer):
                 EventService.order_member_lunches(member=member, lunch_orders=orders_payload)
             except DjangoValidationError as e:
                 raise serializers.ValidationError(detail=str(e)) from None
-
-        return member
-
-    @transaction.atomic()
-    def update(self, instance, validated_data):
-        lunch_orders_data = validated_data.pop('lunch_orders', [])
-
-        instance.lunch_orders.all().delete()
-
-        if lunch_orders_data:
-            orders_payload = [
-                {
-                    'option_id': order['option'].id,
-                    'quantity': order.get('quantity', 1),
-                    'note': order.get('note', ''),
-                }
-                for order in lunch_orders_data
-            ]
-            try:
-                EventService.order_member_lunches(member=instance, lunch_orders=orders_payload)
-            except DjangoValidationError as e:
-                raise serializers.ValidationError(detail=str(e)) from None
-        return super().update(instance, validated_data)
 
 
 class EventTeamSerializer(serializers.ModelSerializer):
