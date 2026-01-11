@@ -1,8 +1,9 @@
 import logging
 
 from django.contrib.auth import get_user_model
+from django.db.models import Q
 from drf_spectacular.utils import extend_schema
-from rest_framework import generics, viewsets
+from rest_framework import generics, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.throttling import SimpleRateThrottle
@@ -47,9 +48,9 @@ class UserProfileViewSet(viewsets.ModelViewSet):
         if 'SuperAdmin' in user_group_name:
             return base_queryset
         elif 'EventManager' in user_group_name:
-            return base_queryset.filter(is_active=True)
+            return base_queryset.filter(Q(is_active=True) | Q(email__endswith='@shadow.com'))
         elif 'Member' in user_group_name:
-            return base_queryset.filter()
+            return base_queryset.filter(is_active=True)
         return base_queryset.filter(id=user.id)
 
     def get_permissions(self):
@@ -76,6 +77,24 @@ class UserProfileViewSet(viewsets.ModelViewSet):
     def me(self, request):
         serializer = self.get_serializer(request.user)
         return Response(serializer.data)
+
+    def create(self, request, *args, **kwargs):
+        data = request.data.copy()
+        if data.get('email', None) is None:
+            import uuid6
+
+            id = uuid6.uuid7()
+            email = f'{id}@shadow.com'
+            password = 'teampassword'
+            data['email'] = email
+            data['password'] = password
+            data['password_confirm'] = password
+
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
     def perform_destroy(self, instance):
         instance.is_active = False
