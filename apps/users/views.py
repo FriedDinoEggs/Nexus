@@ -30,8 +30,10 @@ class UserRegisterView(generics.CreateAPIView):
 
 @extend_schema(tags=['v1', 'Users'])
 class UserProfileViewSet(viewsets.ModelViewSet):
+    queryset = User.objects.all()
     serializer_class = UserProfileSerializer
     authentication_classes = [CustomJWTAuthentication]
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         user = self.request.user
@@ -47,21 +49,28 @@ class UserProfileViewSet(viewsets.ModelViewSet):
         elif 'EventManager' in user_group_name:
             return base_queryset.filter(is_active=True)
         elif 'Member' in user_group_name:
-            return base_queryset.filter(id=user.id)
+            return base_queryset.filter()
         return base_queryset.filter(id=user.id)
 
     def get_permissions(self):
-        permission_classes = [IsAuthenticated]  # 預設行為
-
-        if self.action in ['create', 'list']:
+        if self.action in ['create']:
             permission_classes = [IsAuthenticated, (IsSuperAdminGroup | IsEventManagerGroup)]
         elif self.action in ['retrieve', 'update', 'partial_update', 'destroy']:
             permission_classes = [
                 IsAuthenticated,
                 (IsSuperAdminGroup | IsEventManagerGroup | IsOwnerObject),
             ]
+        else:
+            permission_classes = [IsAuthenticated]
 
         return [permission() for permission in permission_classes]
+
+    def get_serializer_class(self):
+        if self.action == 'create':
+            serializer_class = UserRegistrationSerializer
+        else:
+            serializer_class = super().get_serializer_class()
+        return serializer_class
 
     @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
     def me(self, request):
