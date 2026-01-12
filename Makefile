@@ -3,7 +3,7 @@
 MANAGE := uv run manage.py
 
 install:
-	uv sync
+	uv sync && uv run pre-commit install
 
 makemigrations:
 	$(MANAGE) makemigrations
