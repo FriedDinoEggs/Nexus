@@ -38,10 +38,7 @@ class UserProfileViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        base_queryset = User.objects.prefetch_related('groups')
-
-        if not user.is_authenticated:
-            return User.objects.none()
+        base_queryset = User.objects.all().prefetch_related('groups')
 
         user_group_name = user.groups.values_list('name', flat=True)
 
@@ -89,7 +86,10 @@ class UserProfileViewSet(viewsets.ModelViewSet):
             data['email'] = email
             data['password'] = password
             data['password_confirm'] = password
-
+            data['is_active'] = False
+        else:
+            if data.get('is_active', None) == 'False':
+                data['is_active'] = False
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)

@@ -14,7 +14,15 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['email', 'password', 'password_confirm', 'full_name', 'date_of_birth', 'avatar']
+        fields = [
+            'email',
+            'password',
+            'password_confirm',
+            'full_name',
+            'date_of_birth',
+            'avatar',
+            'is_active',
+        ]
 
         extra_kwargs = {
             'password': {
@@ -31,6 +39,17 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
                 'default': '',
             },
         }
+
+    def get_fields(self):
+        fields = super().get_fields()
+        user = self.context['request'].user
+        if not hasattr(user, '_cached_group_names'):
+            user._cached_group_names = {g.name for g in user.groups.all()}
+
+        if 'SuperAdmin' not in user._cached_group_names:
+            fields.pop('is_active')
+
+        return fields
 
     def validate(self, attrs):
         if attrs['password'] != attrs['password_confirm']:
@@ -80,7 +99,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
         email = validated_data.pop('email')
         password = validated_data.pop('password')
 
-        allowed_fields = ['full_name', 'date_of_birth', 'avatar']
+        allowed_fields = ['full_name', 'date_of_birth', 'avatar', 'is_active']
         user_data = {k: v for k, v in validated_data.items() if k in allowed_fields}
         user = User.objects.create_user(email=email, password=password, **user_data)
         return user
@@ -98,11 +117,9 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
+        data['is_active'] = instance.is_active
         request = self.context.get('request')
         user = getattr(request, 'user', None)
-
-        if not user or not user.is_authenticated:
-            return {'id': data.get('id'), 'full_name': data.get('full_name')}
 
         allow_fields = {'id', 'full_name', 'avatar'}
 
