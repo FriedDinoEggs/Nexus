@@ -88,3 +88,7 @@ class BlackListService:
                 token.blacklist()
             except Exception as e:
                 logger.exception(f'Failed to blacklist refresh token: {e}')
+
+    @staticmethod
+    def send_verify_email(user):
+        pass
