@@ -14,6 +14,7 @@ from pathlib import Path
 import datetime
 
 
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -213,6 +214,14 @@ SIMPLE_JWT = {
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
 }
+
+# Celery
+CELERY_TIMEZONE = 'Asia/Taipei'
+CELERY_TASK_TRACK_STARTED = True
+CELERY_TASK_TIME_LIMIT = 30 * 60
+CELERY_BROKER_URL = f'redis://:{os.environ["REDIS_PASSWORD"]}@localhost:6379/2'
+CELERY_RESULT_BACKEND = f'redis://:{os.environ["REDIS_PASSWORD"]}@localhost:6379/3'
+CELERY_RESULT_EXPIRES = 60*60
 
 if os.getenv('CI'):
     CACHES = {
