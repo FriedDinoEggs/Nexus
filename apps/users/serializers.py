@@ -1,9 +1,20 @@
 from django.contrib.auth import authenticate, get_user_model
 from rest_framework import serializers
 from rest_framework.exceptions import AuthenticationFailed
-from rest_framework_simplejwt.serializers import TokenObtainPairSerializer, TokenRefreshSerializer
+from rest_framework_simplejwt.serializers import (
+    TokenObtainPairSerializer,
+    TokenRefreshSerializer,
+)
 
 User = get_user_model()
+
+
+class UserEmailVerificationSerializer(serializers.Serializer):
+    token = serializers.UUIDField()
+
+
+class UserEmailVerificationRequestSerializer(serializers.Serializer):
+    email = serializers.EmailField()
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):

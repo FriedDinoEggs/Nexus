@@ -2,14 +2,65 @@ import logging
 from datetime import datetime
 from datetime import timezone as dt_timezone
 
+import uuid6
+from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.core.cache import CacheKeyWarning, InvalidCacheKey, cache
-from django.db import DatabaseError, InterfaceError, OperationalError
+from django.db import DatabaseError, InterfaceError, OperationalError, transaction
+from django.urls.base import reverse
 from django.utils import timezone
 from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 
 from .models import BlackListToken
+from .tasks import send_verification_mail_task, send_welcome_mail_task
 
 logger = logging.getLogger(__name__)
+
+User = get_user_model()
+
+
+class UserVerificationServices:
+    cache_header: str = 'mail_verify:'
+
+    @classmethod
+    def send_verification_mail(cls, *, user, base_url: str) -> None:
+        if not isinstance(user, User):
+            logger.warning('send_verification_mail: user is not django User isinstance')
+            raise TypeError(f'user must be django user istance, got {type(user)}')
+
+        token: str = ''
+        max_attempts: int = 3
+        for _attempt_count in range(max_attempts):
+            token = uuid6.uuid7().hex
+
+            if cache.add(f'{cls.cache_header}{token}', user.id, timeout=60 * 60):
+                break
+        else:
+            raise RuntimeError('Generate token error')
+
+        if not base_url:
+            base_url = settings.SITE_BASEURL
+
+        base_url.rstrip('/')
+        path = reverse('v1:users:verification-detail', kwargs={'id': token})
+        url = f'{base_url}{path}'
+        send_verification_mail_task.delay(verification_url=url, to=user.email)
+
+    @classmethod
+    @transaction.atomic
+    def verify_mail(cls, *, token: str) -> int:
+        key = f'{cls.cache_header}{token}'
+        user_id = cache.get(key=key)
+        cache.delete(key=key)
+
+        update_count = User.objects.filter(pk=user_id).update(is_verified=True)
+
+        if update_count != 0:
+            email = User.objects.filter(pk=user_id).values_list('email', flat=True).first()
+            send_welcome_mail_task.delay(to=email)
+        else:
+            logger.error(f'verify_mail: User {user_id} not found')
+        return update_count
 
 
 class BlackListService:
@@ -88,7 +139,3 @@ class BlackListService:
                 token.blacklist()
             except Exception as e:
                 logger.exception(f'Failed to blacklist refresh token: {e}')
-
-    @staticmethod
-    def send_verify_email(user):
-        pass

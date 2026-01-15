@@ -2,10 +2,17 @@ from django.urls import path
 from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenObtainPairView
 
-from .views import CustomJWTLogoutView, CustomTokenRefreshView, UserProfileViewSet, UserRegisterView
+from .views import (
+    CustomJWTLogoutView,
+    CustomTokenRefreshView,
+    UserEmailVerificationViewSet,
+    UserProfileViewSet,
+    UserRegisterView,
+)
 
 router = DefaultRouter()
-router.register(r'', UserProfileViewSet, basename='users')
+router.register(r'user', UserProfileViewSet, basename='users')
+router.register(r'verification', UserEmailVerificationViewSet, basename='verification')
 urlpatterns = [
     path('login/', TokenObtainPairView.as_view(), name='login'),
     path('logout/', CustomJWTLogoutView.as_view(), name='logout'),
