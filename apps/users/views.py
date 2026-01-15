@@ -14,7 +14,7 @@ from rest_framework_simplejwt.views import TokenBlacklistView, TokenRefreshView
 from .authentication import CustomJWTAuthentication
 from .permissions import IsEventManagerGroup, IsOwnerObject, IsSuperAdminGroup
 from .serializers import MyToeknRefreshSerializer, UserProfileSerializer, UserRegistrationSerializer
-from .services import BlackListService
+from .services import BlackListService, UserVerificationServices
 
 # Create your views here.
 User = get_user_model()
@@ -102,6 +102,39 @@ class UserProfileViewSet(viewsets.ModelViewSet):
         new_email = (instance.email[: 254 - len(suffix)] + suffix)[:254]
         instance.email = new_email
         instance.save()
+
+
+# FIX!!!
+class UserEmailVerificationViewSet(viewsets.ViewSet):
+    authentication_classes = [CustomJWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    lookup_url_kwarg = 'id'
+
+    def get_permissions(self):
+        if self.action == 'retrieve':
+            return [AllowAny()]
+        return super().get_permissions()
+
+    def create(self, request):
+        base_url = f'{request.scheme}://{request.get_host()}'
+
+        try:
+            UserVerificationServices.send_verification_mail(user=request.user, base_url=base_url)
+        except RuntimeError as e:
+            return Response(
+                {
+                    'detail': str(e),
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        return Response(status=status.HTTP_200_OK)
+
+    def retrieve(self, request, id=None):
+        if UserVerificationServices.verify_mail(token=id):
+            return Response(status=status.HTTP_200_OK)
+        return Response(status=status.HTTP_400_BAD_REQUEST)
 
 
 @extend_schema(tags=['v1', 'Users'])

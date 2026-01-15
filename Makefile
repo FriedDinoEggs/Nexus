@@ -20,6 +20,9 @@ set_groups:
 run:
 	$(MANAGE) runserver
 
+run_celery:
+	uv run celery -A config worker -l INFO
+
 setup: install makemigrations migrate set_groups create_test_user 
 	@echo "開發環境設定完成!!!"
 
