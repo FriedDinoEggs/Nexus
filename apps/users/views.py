@@ -1,6 +1,7 @@
 import logging
 
 from django.contrib.auth import get_user_model
+from django.db import transaction
 from django.db.models import Q
 from drf_spectacular.utils import extend_schema
 from rest_framework import generics, status, viewsets
@@ -11,9 +12,17 @@ from rest_framework.views import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenBlacklistView, TokenRefreshView
 
+from apps.users.throttles import ResetPasswordThrottle
+
 from .authentication import CustomJWTAuthentication
 from .permissions import IsEventManagerGroup, IsOwnerObject, IsSuperAdminGroup
-from .serializers import MyToeknRefreshSerializer, UserProfileSerializer, UserRegistrationSerializer
+from .serializers import (
+    MyToeknRefreshSerializer,
+    UserPasswordResetSerializer,
+    UserPasswordResetVerifySerializer,
+    UserProfileSerializer,
+    UserRegistrationSerializer,
+)
 from .services import BlackListService, UserVerificationServices
 
 # Create your views here.
@@ -104,7 +113,6 @@ class UserProfileViewSet(viewsets.ModelViewSet):
         instance.save()
 
 
-# FIX!!!
 class UserEmailVerificationViewSet(viewsets.ViewSet):
     authentication_classes = [CustomJWTAuthentication]
     permission_classes = [IsAuthenticated]
@@ -137,7 +145,48 @@ class UserEmailVerificationViewSet(viewsets.ViewSet):
         return Response(status=status.HTTP_400_BAD_REQUEST)
 
 
-@extend_schema(tags=['v1', 'Users'])
+class UserResetPasswordView(viewsets.GenericViewSet):
+    permission_classes = [AllowAny]
+    serializer_class = UserPasswordResetSerializer
+    throttle_classes = [ResetPasswordThrottle]
+    lookup_url_kwarg = 'id'
+
+    def create(self, request):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            UserVerificationServices.send_reset_pwd_mail(account=serializer.validated_data['email'])
+        except Exception as e:
+            return Response(data={'detail': {str(e)}}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(
+            data={'detail': 'verification code has been sent'}, status=status.HTTP_202_ACCEPTED
+        )
+
+    @action(
+        detail=False,
+        methods=['post'],
+        url_path='verify',
+        serializer_class=UserPasswordResetVerifySerializer,
+        throttle_classes=[ResetPasswordThrottle],
+    )
+    def verify(self, request):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            with transaction.atomic():
+                user = User.objects.get(email=serializer.validated_data['email'])
+                user.set_password(serializer.validated_data['password'])
+                user.save()
+
+            return Response(
+                {'message': 'password reset successful'},
+                status=status.HTTP_200_OK,
+            )
+        except Exception as e:
+            return Response({'error': {str(e)}}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@extend_schema(tags=['v1', 'users'])
 class CustomJWTLogoutView(TokenBlacklistView):
     permission_classes = [IsAuthenticated]
     authentication_classes = [CustomJWTAuthentication]

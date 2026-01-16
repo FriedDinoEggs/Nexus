@@ -8,11 +8,13 @@ from .views import (
     UserEmailVerificationViewSet,
     UserProfileViewSet,
     UserRegisterView,
+    UserResetPasswordView,
 )
 
 router = DefaultRouter()
 router.register(r'user', UserProfileViewSet, basename='users')
 router.register(r'verification', UserEmailVerificationViewSet, basename='verification')
+router.register(r'password-reset', UserResetPasswordView, basename='password-reset')
 urlpatterns = [
     path('login/', TokenObtainPairView.as_view(), name='login'),
     path('logout/', CustomJWTLogoutView.as_view(), name='logout'),

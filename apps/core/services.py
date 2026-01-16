@@ -1,5 +1,6 @@
 import logging
 from abc import ABC, abstractmethod
+from textwrap import dedent
 
 import mailtrap as mt
 from django.conf import settings
@@ -33,6 +34,19 @@ class MailServices:
             sender_name='hello',
             receiver_address=to,
             category='Welcome Mail',
+            **message,
+        )
+
+    @staticmethod
+    def send_reset_password_mail(code: str, to: str):
+        services = MailServices._get_provider('mailtrapsandbox')
+        message = ResetPasswordMail.get_message(code=code)
+
+        services.send(
+            sender_address='services',
+            sender_name='hello',
+            receiver_address=to,
+            category='Rest password Mail',
             **message,
         )
 
@@ -166,11 +180,48 @@ class WelcomeMail(MailMessage):
 class ResetPasswordMail(MailMessage):
     @staticmethod
     def _get_subject():
-        raise NotImplementedError('Not Impl')
+        return '[密碼重設] 請接收重設驗證碼'
 
     @staticmethod
-    def _get_body(**kwargs):
-        raise NotImplementedError('Not Impl')
+    def _get_body(code: str, **kwargs):
+        return dedent(f"""
+
+        親愛的用戶您好，
+
+        已重新啟用您的帳號認證流程，請您依照下述步驟完成重新認證並設定新密碼。
+
+        請複製以下驗證碼並設定新密碼：
+        {code}
+
+        若無法直接點擊連結，請將上方網址複製後貼到瀏覽器網址列開啟。
+
+        此驗證碼將在 15 分鐘後失效。如您未在時限內完成操作，請於系統中重新申請密碼設定連結。
+
+        若您並未申請重新設定密碼，請忽略此信件，並建議您留意帳號安全狀況。
+
+        感謝您的配合與使用。
+        """).strip()
+
+    @staticmethod
+    def _get_html_context(code: str, **kwargs):
+        return dedent(f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+        </head>
+        <body>
+            <div style="max-width: 500px; margin: 40px auto; padding: 30px;
+            border: 1px solid #e0e0e0; border-radius: 10px;">
+                <h2>帳號驗證</h2>
+                <p>請複製下方驗證碼完成驗證：</p>
+                <p style="font-size: 14px; color: #666;"> {code} </p>
+                <hr>
+                <p style="font-size: 13px; color: #888;"> 此驗證碼將在 15 分鐘後失效。</p>
+            </div>
+        </body>
+        </html>
+        """).strip()
 
 
 class MailProvider(ABC):
