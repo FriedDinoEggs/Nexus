@@ -6,6 +6,8 @@ from rest_framework_simplejwt.serializers import (
     TokenRefreshSerializer,
 )
 
+from apps.users.services import UserVerificationServices
+
 User = get_user_model()
 
 
@@ -166,6 +168,23 @@ class UserLoginSerializer(serializers.Serializer):
             return user
         else:
             raise serializers.ValidationError('請提供帳號密碼')
+
+
+class UserPasswordResetSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+
+class UserPasswordResetVerifySerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    password = serializers.CharField(write_only=True)
+    verification_code = serializers.CharField()
+
+    def validate(self, attrs):
+        if not UserVerificationServices.verify_reset_pwd(
+            code=attrs['verification_code'], account=attrs['email']
+        ):
+            raise serializers.ValidationError('verification error')
+        return attrs
 
 
 class MyToeknRefreshSerializer(TokenRefreshSerializer):

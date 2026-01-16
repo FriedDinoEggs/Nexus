@@ -1,4 +1,5 @@
 import logging
+import random
 from datetime import datetime
 from datetime import timezone as dt_timezone
 
@@ -12,7 +13,11 @@ from django.utils import timezone
 from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 
 from .models import BlackListToken
-from .tasks import send_verification_mail_task, send_welcome_mail_task
+from .tasks import (
+    send_reset_password_mail_task,
+    send_verification_mail_task,
+    send_welcome_mail_task,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +25,8 @@ User = get_user_model()
 
 
 class UserVerificationServices:
-    cache_header: str = 'mail_verify:'
+    cache_verify_header: str = 'mail_verify:'
+    cache_reset_pwd_header: str = 'mail_reset_pwd'
 
     @classmethod
     def send_verification_mail(cls, *, user, base_url: str) -> None:
@@ -33,7 +39,7 @@ class UserVerificationServices:
         for _attempt_count in range(max_attempts):
             token = uuid6.uuid7().hex
 
-            if cache.add(f'{cls.cache_header}{token}', user.id, timeout=60 * 60):
+            if cache.add(f'{cls.cache_verify_header}{token}', user.id, timeout=60 * 60):
                 break
         else:
             raise RuntimeError('Generate token error')
@@ -49,7 +55,7 @@ class UserVerificationServices:
     @classmethod
     @transaction.atomic
     def verify_mail(cls, *, token: str) -> int:
-        key = f'{cls.cache_header}{token}'
+        key = f'{cls.cache_verify_header}{token}'
         user_id = cache.get(key=key)
         cache.delete(key=key)
 
@@ -61,6 +67,35 @@ class UserVerificationServices:
         else:
             logger.error(f'verify_mail: User {user_id} not found')
         return update_count
+
+    @classmethod
+    def send_reset_pwd_mail(cls, *, account: str):
+        code: str | None = None
+        max_attempts: int = 3
+        for _attempt_count in range(max_attempts):
+            code = f'{random.randint(0, 999999):06d}'
+
+            if cache.set(account, f'{cls.cache_reset_pwd_header}{code}', timeout=60 * 15):
+                break
+        else:
+            raise RuntimeError('Generate token error')
+
+        send_reset_password_mail_task.delay(code=code, to=account)
+
+    @classmethod
+    def verify_reset_pwd(cls, *, code: str, account: str) -> bool:
+        verification_code: str | None = None
+
+        try:
+            verification_code = cache.get(account)
+            cache.delete(account)
+        except Exception:
+            raise
+
+        if verification_code != f'{cls.cache_reset_pwd_header}{code}':
+            return False
+
+        return True
 
 
 class BlackListService:
