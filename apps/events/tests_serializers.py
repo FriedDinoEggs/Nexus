@@ -33,7 +33,7 @@ class TestEventTeamMemberSerializer(APITestCase):
         EventTeamMember.objects.create(event_team=self.event_team1, user=self.user)
 
         # Try to register for another team in same event
-        data = {'event_team': self.event_team2.id}
+        data = {'user': self.user.id, 'event_team': self.event_team2.id}
         serializer = EventTeamMemberSerializer(data=data, context={'request': self.request})
 
         self.assertTrue(serializer.is_valid(), serializer.errors)
@@ -59,7 +59,7 @@ class TestEventTeamMemberSerializer(APITestCase):
         self.assertTrue(serializer.is_valid(), serializer.errors)
 
     def test_create_works_as_expected(self):
-        data = {'event_team': self.event_team1.id, 'is_player': True}
+        data = {'user': self.user.id, 'event_team': self.event_team1.id, 'is_player': True}
         serializer = EventTeamMemberSerializer(data=data, context={'request': self.request})
 
         self.assertTrue(serializer.is_valid(), serializer.errors)
