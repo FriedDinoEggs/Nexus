@@ -231,6 +231,9 @@ MAILTRAP_INBOX_ID = os.getenv('MAILTRAP_INBOX_ID')
 
 SITE_BASEURL = 'localhost:8000'
 
+GOOGLE_WEB_CLIENT_ID = os.getenv('GOOGLE_OAUTH_CLIENT_ID')
+GOOGLE_OAUTH_SECRET_FILE_PATH = os.getenv('GOOGLE_OAUTH_SCRECT_FILE_PATH')
+
 if os.getenv('CI'):
     CACHES = {
         "default": {

@@ -25,3 +25,29 @@ class BlackListToken(models.Model):
     @classmethod
     def cleanup_expired(cls):
         cls.objects.filter(expires_at__lt=timezone.now()).delete()
+
+
+class ScocialAccount(models.Model):
+    class SocialType(models.TextChoices):
+        GOOGLE = 'google', 'Google'
+        FACEBOOK = 'facebook', 'Facebook'
+        APPLE = 'apple', 'Apple'
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    social_id = models.CharField(max_length=255)
+    social_type = models.CharField(max_length=8, choices=SocialType)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_login = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['social_id', 'social_type'],
+                name='unique_social_type_social_id',
+                violation_error_message='A social account with this provider and ID already exist',
+            )
+        ]
+
+    def __str__(self):
+        return f'{self.user}_{self.social_type}'
