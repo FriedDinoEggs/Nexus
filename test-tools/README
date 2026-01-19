@@ -1,0 +1,4 @@
+Using Gemini CLI for 'vibe coding' to fetch authorization codes for testing social login flows.
+
+Dependencies: npm, GNU Make
+Usage: Run make run to start the flow.
