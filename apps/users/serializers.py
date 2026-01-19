@@ -1,3 +1,6 @@
+import secrets
+from dataclasses import asdict
+
 from django.contrib.auth import authenticate, get_user_model
 from rest_framework import serializers
 from rest_framework.exceptions import AuthenticationFailed
@@ -6,7 +9,9 @@ from rest_framework_simplejwt.serializers import (
     TokenRefreshSerializer,
 )
 
+from apps.users.models import ScocialAccount
 from apps.users.services import UserVerificationServices
+from apps.users.services.social_services import SocialServices
 
 User = get_user_model()
 
@@ -207,3 +212,42 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
         data['refresh_token'] = data['refresh']
 
         return data
+
+
+class GoogleLoginSerializer(serializers.Serializer):
+    code = serializers.CharField(write_only=True)
+
+    def validate(self, attrs):
+        info = SocialServices.get_social_info('google', attrs['code'])
+
+        if not info:
+            raise serializers.ValidationError({'code': 'Invalid authorization code'})
+
+        return {'oauth_info': asdict(info)}
+
+    def create(self, validated_data):
+        info = validated_data['oauth_info']
+
+        user = User.objects.filter(email=info['email']).first()
+        if not user:
+            password = secrets.token_urlsafe(12)
+            user = User.objects.create_user(
+                email=info['email'],
+                password=password,
+                full_name=info.get('full_name', ''),
+                is_active=True,
+                is_verified=True,
+            )
+
+        social_account, created = ScocialAccount.objects.get_or_create(
+            social_id=info['provider_user_id'],
+            social_type=info['provider'],
+            defaults={
+                'user': user,
+            },
+        )
+
+        if not created:
+            social_account.save(update_fields=['last_login'])
+
+        return user

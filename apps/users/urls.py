@@ -5,6 +5,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from .views import (
     CustomJWTLogoutView,
     CustomTokenRefreshView,
+    GoogleLoginViewSet,
     UserEmailVerificationViewSet,
     UserProfileViewSet,
     UserRegisterView,
@@ -17,6 +18,7 @@ router.register(r'verification', UserEmailVerificationViewSet, basename='verific
 router.register(r'password-reset', UserResetPasswordView, basename='password-reset')
 urlpatterns = [
     path('login/', TokenObtainPairView.as_view(), name='login'),
+    path('login/google/', GoogleLoginViewSet.as_view({'post': 'create'}), name='google-login'),
     path('logout/', CustomJWTLogoutView.as_view(), name='logout'),
     path('refresh/', CustomTokenRefreshView.as_view(), name='refresh'),
     path('register/', UserRegisterView.as_view(), name='register'),

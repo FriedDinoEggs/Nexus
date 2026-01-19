@@ -16,10 +16,13 @@ dependencies = [
     "drf-nested-routers>=0.95.0",
     "drf-spectacular>=0.29.0",
     "flake8-django>=1.4",
+    "google-auth>=2.47.0",
+    "google-auth-oauthlib>=1.2.4",
     "mailtrap>=2.4.0",
     "pillow>=12.0.0",
     "psycopg[binary]>=3.3.1",
     "redis>=6.4.0",
+    "requests>=2.32.5",
     "uuid6>=2025.0.1",
 ]
 

@@ -12,8 +12,9 @@ from django.urls.base import reverse
 from django.utils import timezone
 from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 
-from .models import BlackListToken
-from .tasks import (
+from apps.users.models import BlackListToken
+
+from ..tasks import (
     send_reset_password_mail_task,
     send_verification_mail_task,
     send_welcome_mail_task,
@@ -108,7 +109,7 @@ class BlackListService:
 
         token_jti = token.get('jti')
         if not token_jti:
-            logger.warning('token missing jti claim')
+            logger.warning('token missing jit claim')
             return False
 
         black_name = f'{cls.blacklist_prefix}:{token_jti}'
