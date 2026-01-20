@@ -146,7 +146,7 @@ class UserEmailVerificationViewSet(viewsets.ViewSet):
         return Response(status=status.HTTP_400_BAD_REQUEST)
 
 
-class UserResetPasswordView(viewsets.GenericViewSet):
+class UserResetPasswordViewSet(viewsets.GenericViewSet):
     permission_classes = [AllowAny]
     serializer_class = UserPasswordResetSerializer
     throttle_classes = [ResetPasswordThrottle]
@@ -193,7 +193,7 @@ class GoogleLoginViewSet(viewsets.GenericViewSet):
     serializer_class = GoogleLoginSerializer
     lookup_url_kwarg = 'id'
 
-    def create(self, request):
+    def login(self, request):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 

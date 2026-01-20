@@ -9,16 +9,17 @@ from .views import (
     UserEmailVerificationViewSet,
     UserProfileViewSet,
     UserRegisterView,
-    UserResetPasswordView,
+    UserResetPasswordViewSet,
 )
 
 router = DefaultRouter()
-router.register(r'user', UserProfileViewSet, basename='users')
+router.register(r'members', UserProfileViewSet, basename='users')
 router.register(r'verification', UserEmailVerificationViewSet, basename='verification')
-router.register(r'password-reset', UserResetPasswordView, basename='password-reset')
+router.register(r'password-reset', UserResetPasswordViewSet, basename='password-reset')
+
 urlpatterns = [
     path('login/', TokenObtainPairView.as_view(), name='login'),
-    path('login/google/', GoogleLoginViewSet.as_view({'post': 'create'}), name='google-login'),
+    path('login/google/', GoogleLoginViewSet.as_view({'post': 'login'}), name='google-login'),
     path('logout/', CustomJWTLogoutView.as_view(), name='logout'),
     path('refresh/', CustomTokenRefreshView.as_view(), name='refresh'),
     path('register/', UserRegisterView.as_view(), name='register'),

@@ -56,7 +56,9 @@ urlpatterns = [
         include(
             (
                 [
-                    path('users/', include(('apps.users.urls', 'users'))),
+                    path(
+                        'users/', include(('apps.users.urls', 'users_app'), namespace='users_app')
+                    ),
                     path('', include(router.urls)),
                     path('', include(event_team_router.urls)),
                     path('', include(team_members_router.urls)),
