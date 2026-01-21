@@ -130,7 +130,7 @@ class UserVerificationViewSet(viewsets.GenericViewSet):
             return UserVerificationVerifySerilizer
 
     def get_permissions(self):
-        if self.action == 'retrieve':
+        if self.action == 'verify':
             return [AllowAny()]
         return super().get_permissions()
 

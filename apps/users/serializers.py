@@ -175,19 +175,17 @@ class UserLoginSerializer(serializers.Serializer):
             raise serializers.ValidationError('請提供帳號密碼')
 
 
+MODE_CHOICE = [
+    ('verifyEmail', 'verify email'),
+    ('resetPassword', 'reset password'),
+]
+
+
 class UserVerificationRequestSerializer(serializers.Serializer):
-    MODE_CHOICE = [
-        ('verifyEmail', 'verify email'),
-        ('resetPassword', 'reset password'),
-    ]
     mode = serializers.ChoiceField(choices=MODE_CHOICE, required=True)
 
 
 class UserVerificationVerifySerilizer(serializers.Serializer):
-    MODE_CHOICE = [
-        ('verifyEmail', 'verify email'),
-        ('resetPassword', 'reset password'),
-    ]
     mode = serializers.ChoiceField(choices=MODE_CHOICE, required=True)
     code = serializers.CharField(required=True)
 

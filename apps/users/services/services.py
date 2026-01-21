@@ -52,7 +52,7 @@ class UserVerificationServices:
         base_url.rstrip('/')
         path = reverse('v1:users_app:password-reset-verify')
 
-        param = {'mode': 'verifyMail', 'code': token}
+        param = {'mode': 'verifyEmail', 'code': token}
 
         url = f'{base_url}{path}?{urlencode(param)}'
         send_verification_mail_task.delay(verification_url=url, to=user.email)
