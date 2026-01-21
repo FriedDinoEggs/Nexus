@@ -12,7 +12,7 @@ from rest_framework.views import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenBlacklistView, TokenRefreshView
 
-from apps.users.throttles import ResetPasswordThrottle
+from apps.users.throttles import EmailVerificationThrottle, ResetPasswordThrottle
 
 from .authentication import CustomJWTAuthentication
 from .permissions import IsEventManagerGroup, IsOwnerObject, IsSuperAdminGroup
@@ -23,6 +23,8 @@ from .serializers import (
     UserPasswordResetVerifySerializer,
     UserProfileSerializer,
     UserRegistrationSerializer,
+    UserVerificationRequestSerializer,
+    UserVerificationVerifySerilizer,
 )
 from .services import BlackListService, UserVerificationServices
 
@@ -114,35 +116,69 @@ class UserProfileViewSet(viewsets.ModelViewSet):
         instance.save()
 
 
-class UserEmailVerificationViewSet(viewsets.ViewSet):
+class UserVerificationViewSet(viewsets.GenericViewSet):
     authentication_classes = [CustomJWTAuthentication]
     permission_classes = [IsAuthenticated]
+    throttle_classes = [EmailVerificationThrottle]
 
     lookup_url_kwarg = 'id'
+
+    def get_serializer_class(self):
+        if self.action == 'send':
+            return UserVerificationRequestSerializer
+        else:
+            return UserVerificationVerifySerilizer
 
     def get_permissions(self):
         if self.action == 'retrieve':
             return [AllowAny()]
         return super().get_permissions()
 
-    def create(self, request):
-        base_url = f'{request.scheme}://{request.get_host()}'
+    @action(detail=False, methods=['POST'])
+    def send(self, request):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        mode = serializer.validated_data.get('mode')
 
-        try:
-            UserVerificationServices.send_verification_mail(user=request.user, base_url=base_url)
-        except RuntimeError as e:
-            return Response(
-                {
-                    'detail': str(e),
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        match mode:
+            case 'verifyEmail':
+                base_url = f'{request.scheme}://{request.get_host()}'
+                try:
+                    UserVerificationServices.send_verification_mail(
+                        user=request.user, base_url=base_url
+                    )
+                except RuntimeError as e:
+                    return Response(
+                        {
+                            'detail': str(e),
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+            case _:
+                logger.error('verification/send/ endpoint mode unknown error')
+                return Response(
+                    {
+                        'Error': 'unknown error',
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
+        return Response(status=status.HTTP_202_ACCEPTED)
+
+    @action(detail=False, methods=['POST'])
+    def verify(self, request):
+        serilizer = self.get_serializer(data=request.data)
+        serilizer.is_valid(raise_exception=True)
+        mode = serilizer.validated_data.get('mode')
+        code = serilizer.validated_data.get('code')
+        match mode:
+            case 'verifyEmail':
+                if not UserVerificationServices.verify_mail(token=code):
+                    return Response(status=status.HTTP_400_BAD_REQUEST)
+
+            case _:
+                return Response(status=status.HTTP_400_BAD_REQUEST)
         return Response(status=status.HTTP_200_OK)
-
-    def retrieve(self, request, id=None):
-        if UserVerificationServices.verify_mail(token=id):
-            return Response(status=status.HTTP_200_OK)
         return Response(status=status.HTTP_400_BAD_REQUEST)
 
 

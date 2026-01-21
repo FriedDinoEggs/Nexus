@@ -6,23 +6,24 @@ from .views import (
     CustomJWTLogoutView,
     CustomTokenRefreshView,
     GoogleLoginViewSet,
-    UserEmailVerificationViewSet,
     UserProfileViewSet,
     UserRegisterView,
     UserResetPasswordViewSet,
+    UserVerificationViewSet,
 )
 
 router = DefaultRouter()
-router.register(r'members', UserProfileViewSet, basename='users')
-router.register(r'verification', UserEmailVerificationViewSet, basename='verification')
+# router = root_router
+router.register(r'users', UserProfileViewSet, basename='users')
+router.register(r'verification', UserVerificationViewSet, basename='email-verification')
 router.register(r'password-reset', UserResetPasswordViewSet, basename='password-reset')
 
 urlpatterns = [
-    path('login/', TokenObtainPairView.as_view(), name='login'),
-    path('login/google/', GoogleLoginViewSet.as_view({'post': 'login'}), name='google-login'),
-    path('logout/', CustomJWTLogoutView.as_view(), name='logout'),
-    path('refresh/', CustomTokenRefreshView.as_view(), name='refresh'),
-    path('register/', UserRegisterView.as_view(), name='register'),
+    path('users/login/', TokenObtainPairView.as_view(), name='login'),
+    path('users/login/google/', GoogleLoginViewSet.as_view({'post': 'login'}), name='google-login'),
+    path('users/logout/', CustomJWTLogoutView.as_view(), name='logout'),
+    path('users/refresh/', CustomTokenRefreshView.as_view(), name='refresh'),
+    path('users/register/', UserRegisterView.as_view(), name='register'),
 ]
 
 urlpatterns += router.urls
