@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'apps.events',
     'apps.matches',
     'drf_spectacular',
+    'django_extensions',
 ]
 
 MIDDLEWARE = [
@@ -284,7 +285,7 @@ LOGGING = {
     },
     'handlers': {
         'console': {
-            'level': 'DEBUG',
+            'level': 'INFO',
             'class': 'logging.StreamHandler',
             'formatter': 'simple',
         },

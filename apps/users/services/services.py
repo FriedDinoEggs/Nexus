@@ -2,6 +2,7 @@ import logging
 import random
 from datetime import datetime
 from datetime import timezone as dt_timezone
+from urllib.parse import urlencode
 
 import uuid6
 from django.conf import settings
@@ -49,8 +50,11 @@ class UserVerificationServices:
             base_url = settings.SITE_BASEURL
 
         base_url.rstrip('/')
-        path = reverse('v1:users:verification-detail', kwargs={'id': token})
-        url = f'{base_url}{path}'
+        path = reverse('v1:users_app:password-reset-verify')
+
+        param = {'mode': 'verifyEmail', 'code': token}
+
+        url = f'{base_url}{path}?{urlencode(param)}'
         send_verification_mail_task.delay(verification_url=url, to=user.email)
 
     @classmethod
