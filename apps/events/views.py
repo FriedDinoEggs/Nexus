@@ -3,6 +3,7 @@ from rest_framework import permissions, serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.views import Response
 
+from apps.teams.services import TeamService
 from apps.users.permissions import (
     IsEventManagerGroup,
     IsOwnerObject,
@@ -100,9 +101,21 @@ class EventTeamViewSet(viewsets.ModelViewSet):
         data = request.data.copy()
 
         event_id_url = self.kwargs.get('event_id')
-
         if event_id_url:
             data['event'] = event_id_url
+
+        if not data.get('team'):
+            new_team_name = data.get('new_team_name')
+            if not new_team_name:
+                raise serializers.ValidationError(
+                    'Either team:id or new_team_name:str field must be provided.'
+                )
+            try:
+                team = TeamService.create_team(user=request.user, name=new_team_name)
+                data['team'] = team.id
+                del data['new_team_name']
+            except Exception as e:
+                raise serializers.ValidationError({'detail': str(e)}) from None
 
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
@@ -113,7 +126,7 @@ class EventTeamViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['GET'], permission_classes=[permissions.IsAuthenticated])
     def me(self, request):
         queryset = super().get_queryset()
-        queryset = queryset.filter(roster__user=self.request.user)
+        queryset = queryset.filter(event_team_members__user=self.request.user)
 
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)

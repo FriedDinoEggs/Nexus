@@ -142,12 +142,12 @@ class EventService:
     @staticmethod
     @transaction.atomic
     def del_team_member(*, event_team: EventTeam, user: User):
-        event_team.roster.filter(user=user).delete()
+        event_team.event_team_members.filter(user=user).delete()
 
     @staticmethod
     def get_user_event_teams(*, user_id) -> EventTeam:
         queryset = (
-            EventTeam.objects.filter(roster__user_id=user_id)
+            EventTeam.objects.filter(event_team_members__user_id=user_id)
             .select_related('event', 'team', 'coach', 'leader')
             .distinct()
         )

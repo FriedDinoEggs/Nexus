@@ -8,6 +8,7 @@ from apps.events.views import (
     EventViewSet,
     LunchOptionsViewSet,
 )
+from apps.matches.views import TeamMatchViewSet
 
 router = DefaultRouter()
 router.register(r'events', EventViewSet, basename='events')
@@ -21,6 +22,7 @@ event_team_router.register(
 
 team_members_router = routers.NestedSimpleRouter(router, r'event-teams', lookup='event_team')
 team_members_router.register(r'members', EventTeamMemberViewSet, basename='members-nested')
+team_members_router.register(r'team-matches', TeamMatchViewSet, basename='team-matches-nested')
 
 urlpatterns = [
     path('', include(event_team_router.urls)),
