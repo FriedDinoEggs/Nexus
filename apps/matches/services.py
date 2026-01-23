@@ -3,10 +3,9 @@ from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.db import transaction
 
-from apps.events.models import Event, EventTeam
+from apps.events.models import Event, EventMatchConfiguration, EventTeam
 
 from .models import (
-    EventMatchConfiguration,
     MatchSet,
     MatchTemplate,
     MatchTemplateItem,
@@ -63,6 +62,19 @@ class MatchService:
             MatchTemplateItem.objects.bulk_create(items)
 
         return template
+
+    @staticmethod
+    @transaction.atomic
+    def set_event_config(
+        event: Event, template: MatchTemplate, rule_config: dict = None
+    ) -> EventMatchConfiguration:
+        if rule_config is None:
+            rule_config = {}
+
+        config, created = EventMatchConfiguration.objects.update_or_create(
+            event=event, defaults={'template': template, 'rule_config': rule_config}
+        )
+        return config
 
     @staticmethod
     @transaction.atomic

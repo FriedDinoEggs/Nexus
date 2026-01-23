@@ -3,8 +3,27 @@ from django.db import transaction
 from rest_framework import serializers
 from rest_framework.relations import PrimaryKeyRelatedField
 
-from .models import Event, EventTeam, EventTeamMember, LunchOption, RegistrationLunchOrder
+from apps.matches.models import MatchTemplate
+from apps.matches.services import MatchService
+
+from .models import (
+    Event,
+    EventMatchConfiguration,
+    EventTeam,
+    EventTeamMember,
+    LunchOption,
+    RegistrationLunchOrder,
+)
 from .services import EventService
+
+
+class EventMatchConfigurationSerializer(serializers.ModelSerializer):
+    template = serializers.PrimaryKeyRelatedField(queryset=MatchTemplate.objects.all())
+    template_name = serializers.ReadOnlyField(source='template.name')
+
+    class Meta:
+        model = EventMatchConfiguration
+        fields = ['id', 'template', 'template_name', 'rule_config']
 
 
 class RegistrationLunchOrderSerializer(serializers.ModelSerializer):
@@ -113,6 +132,7 @@ class LunchOptionSerializer(serializers.ModelSerializer):
 class EventSerializer(serializers.ModelSerializer):
     event_teams = EventTeamSerializer(many=True, read_only=True)
     lunch_options = LunchOptionSerializer(many=True, required=False)
+    match_config = EventMatchConfigurationSerializer(required=False)
     # location_name = serializers.ReadOnlyField(source='location.name')
 
     class Meta:
@@ -127,12 +147,14 @@ class EventSerializer(serializers.ModelSerializer):
             # 'location_name',
             'event_teams',
             'lunch_options',
+            'match_config',
         ]
         depth = 1
 
     @transaction.atomic
     def create(self, validated_data):
         lunch_options_data = validated_data.pop('lunch_options', [])
+        match_config_data = validated_data.pop('match_config', None)
 
         try:
             event = EventService.create_event(
@@ -150,6 +172,13 @@ class EventSerializer(serializers.ModelSerializer):
                 ]
                 LunchOption.objects.bulk_create(options)
 
+            if match_config_data:
+                MatchService.set_event_config(
+                    event=event,
+                    template=match_config_data['template'],
+                    rule_config=match_config_data.get('rule_config'),
+                )
+
             return event
         except DjangoValidationError as e:
             raise serializers.ValidationError(detail=str(e)) from None
@@ -157,6 +186,7 @@ class EventSerializer(serializers.ModelSerializer):
     @transaction.atomic
     def update(self, instance, validated_data):
         lunch_options_data = validated_data.pop('lunch_options', None)
+        match_config_data = validated_data.pop('match_config', None)
 
         instance = super().update(instance, validated_data)
 
@@ -167,5 +197,12 @@ class EventSerializer(serializers.ModelSerializer):
                 for item in lunch_options_data
             ]
             LunchOption.objects.bulk_create(options)
+
+        if match_config_data:
+            MatchService.set_event_config(
+                event=instance,
+                template=match_config_data['template'],
+                rule_config=match_config_data.get('rule_config'),
+            )
 
         return instance

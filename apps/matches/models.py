@@ -5,7 +5,7 @@ from django.db.models import CheckConstraint, F, Q, UniqueConstraint
 from django.db.models.functions import Greatest, Least
 
 from apps.core.models import SoftDeleteModel, TimeStampedModel
-from apps.events.models import Event, EventTeam
+from apps.events.models import EventTeam
 
 # Create your models here.
 User = get_user_model()
@@ -234,32 +234,3 @@ class PlayerMatchParticipant(TimeStampedModel):
         if self.player and not self.player_name_backup:
             self.player_name_backup = self.player.full_name[:128]
         return super().save(*argc, **kwargs)
-
-
-def get_default_rule_config():
-    return {
-        'winning_sets': 3,  # Number of sets to win a PlayerMatch
-        'set_winning_points': 11,  # Points needed to win a single set
-        'use_deuce': True,  # Whether to use deuce rule (must win by 2 points)
-        'team_winning_points': 3,  # Number of points (matches) to win a TeamMatch
-        'play_all_sets': False,  # Must play all sets, overrides winning_sets setting
-        'play_all_matches': False,  # Must play all matches, overrides team_winning_points setting
-        'count_points_by_sets': False,  # Whether to count set scores (e.g. 3:2) or win/loss (1:0)
-    }
-
-
-class EventMatchConfiguration(TimeStampedModel):
-    event = models.OneToOneField(Event, on_delete=models.CASCADE, related_name='match_config')
-
-    template = models.ForeignKey(
-        MatchTemplate, on_delete=models.PROTECT, related_name='event_configs'
-    )
-
-    rule_config = models.JSONField(
-        default=get_default_rule_config,
-        blank=True,
-        help_text='Configuration for scoring rules (e.g. winning_sets, etc.)',
-    )
-
-    def __str__(self):
-        return f'Config for {self.event.name} using {self.template.name}'
