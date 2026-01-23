@@ -1,4 +1,4 @@
-.PHONY: help install migrate test lint run create_test_user set_groups
+.PHONY: help install migrate test lint run create_test_user set_groups up down
 
 MANAGE := uv run manage.py
 
@@ -40,6 +40,11 @@ lint-fix:
 	uv run ruff check --fix .
 	@echo " Auto-fixed issues!"
 
+up:
+	docker compose -f ./compose.yaml -p nexus-test up -d
+
+down:
+	docker compose -p nexus-test down -t 10
 
 test:
 	$(MANAGE) test 
