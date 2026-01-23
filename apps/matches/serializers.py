@@ -100,6 +100,14 @@ class TeamMatchSerializer(serializers.ModelSerializer):
             'player_matches',
             'matches_info',
         ]
+        extra_kwargs = {
+            'team_a': {
+                'required': True,
+            },
+            'team_b': {
+                'required': True,
+            },
+        }
 
     def create(self, validated_data):
         # player_matches_data should look like:

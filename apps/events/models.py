@@ -83,7 +83,9 @@ class EventTeam(TimeStampedModel):
 
 
 class EventTeamMember(TimeStampedModel):
-    event_team = models.ForeignKey(EventTeam, on_delete=models.CASCADE, related_name='roster')
+    event_team = models.ForeignKey(
+        EventTeam, on_delete=models.CASCADE, related_name='event_team_members'
+    )
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     is_player = models.BooleanField(default=False, blank=True)
     is_coach = models.BooleanField(default=False, blank=True)

@@ -28,6 +28,10 @@ urlpatterns = [
                 [
                     path('', include(('apps.users.urls', 'users_app'), namespace='users_app')),
                     path('', include(('apps.events.urls', 'events_app'), namespace='events_app')),
+                    path('', include(('apps.teams.urls', 'teams_app'), namespace='teams_app')),
+                    path(
+                        '', include(('apps.matches.urls', 'matches_app'), namespace='matches_app')
+                    ),
                 ],
                 'v1',
             ),
