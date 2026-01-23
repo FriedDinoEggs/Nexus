@@ -82,10 +82,21 @@ class UserProfileViewSet(viewsets.ModelViewSet):
             serializer_class = super().get_serializer_class()
         return serializer_class
 
-    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
+    @action(detail=False, methods=['GET', 'PATCH'], permission_classes=[IsAuthenticated])
     def me(self, request):
-        serializer = self.get_serializer(request.user)
-        return Response(serializer.data)
+        serializer = None
+        match request.method:
+            case 'GET':
+                serializer = self.get_serializer(request.user)
+            case 'PATCH':
+                serializer = self.get_serializer(request.user, data=request.data, partial=True)
+                serializer.is_valid(raise_exception=True)
+                serializer.save()
+            case _:
+                pass
+        if serializer:
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(status=status.HTTP_400_BAD_REQUEST)
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy()
