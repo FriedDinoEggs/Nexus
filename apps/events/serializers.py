@@ -3,8 +3,26 @@ from django.db import transaction
 from rest_framework import serializers
 from rest_framework.relations import PrimaryKeyRelatedField
 
-from .models import Event, EventTeam, EventTeamMember, LunchOption, RegistrationLunchOrder
+from .models import (
+    Event,
+    EventMatchConfiguration,
+    EventMatchTemplate,
+    EventMatchTemplateItem,
+    EventTeam,
+    EventTeamMember,
+    LunchOption,
+    RegistrationLunchOrder,
+)
 from .services import EventService
+
+
+class EventMatchConfigurationSerializer(serializers.ModelSerializer):
+    template = serializers.PrimaryKeyRelatedField(queryset=EventMatchTemplate.objects.all())
+    template_name = serializers.ReadOnlyField(source='template.name')
+
+    class Meta:
+        model = EventMatchConfiguration
+        fields = ['id', 'template', 'template_name', 'rule_config']
 
 
 class RegistrationLunchOrderSerializer(serializers.ModelSerializer):
@@ -113,6 +131,7 @@ class LunchOptionSerializer(serializers.ModelSerializer):
 class EventSerializer(serializers.ModelSerializer):
     event_teams = EventTeamSerializer(many=True, read_only=True)
     lunch_options = LunchOptionSerializer(many=True, required=False)
+    match_config = EventMatchConfigurationSerializer(required=False)
     # location_name = serializers.ReadOnlyField(source='location.name')
 
     class Meta:
@@ -127,12 +146,14 @@ class EventSerializer(serializers.ModelSerializer):
             # 'location_name',
             'event_teams',
             'lunch_options',
+            'match_config',
         ]
         depth = 1
 
     @transaction.atomic
     def create(self, validated_data):
         lunch_options_data = validated_data.pop('lunch_options', [])
+        match_config_data = validated_data.pop('match_config', None)
 
         try:
             event = EventService.create_event(
@@ -150,6 +171,13 @@ class EventSerializer(serializers.ModelSerializer):
                 ]
                 LunchOption.objects.bulk_create(options)
 
+            if match_config_data:
+                EventService.set_event_config(
+                    event=event,
+                    template=match_config_data['template'],
+                    rule_config=match_config_data.get('rule_config'),
+                )
+
             return event
         except DjangoValidationError as e:
             raise serializers.ValidationError(detail=str(e)) from None
@@ -157,6 +185,7 @@ class EventSerializer(serializers.ModelSerializer):
     @transaction.atomic
     def update(self, instance, validated_data):
         lunch_options_data = validated_data.pop('lunch_options', None)
+        match_config_data = validated_data.pop('match_config', None)
 
         instance = super().update(instance, validated_data)
 
@@ -168,4 +197,42 @@ class EventSerializer(serializers.ModelSerializer):
             ]
             LunchOption.objects.bulk_create(options)
 
+        if match_config_data:
+            EventService.set_event_config(
+                event=instance,
+                template=match_config_data['template'],
+                rule_config=match_config_data.get('rule_config'),
+            )
+
         return instance
+
+
+class EventMatchTemplateItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EventMatchTemplateItem
+        fields = ['id', 'number', 'format', 'requirement']
+
+
+class EventMatchTemplateSerializer(serializers.ModelSerializer):
+    items = EventMatchTemplateItemSerializer(many=True)
+    creator_name = serializers.ReadOnlyField(source='creator.full_name')
+
+    class Meta:
+        model = EventMatchTemplate
+        fields = ['id', 'name', 'creator', 'creator_name', 'items', 'created_at']
+        read_only_fields = ['creator', 'created_at']
+
+    def create(self, validated_data):
+        items_data = validated_data.pop('items')
+        request = self.context.get('request')
+        creator = request.user if request and request.user.is_authenticated else None
+
+        return EventService.create_match_template(
+            name=validated_data['name'], items_data=items_data, creator=creator
+        )
+
+    def update(self, instance, validated_data):
+        items_data = validated_data.pop('items', None)
+        return EventService.update_match_template(
+            template=instance, name=validated_data.get('name'), items_data=items_data
+        )

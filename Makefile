@@ -26,6 +26,9 @@ run_celery:
 setup: install makemigrations migrate set_groups create_test_user 
 	@echo "開發環境設定完成!!!"
 
+setup_prod: install makemigrations migrate set_groups
+	@echo "The production enviorment has been set up!!!"
+
 format:
 	uv run ruff format .
 	uv run ruff check --select I --fix .

@@ -1,12 +1,15 @@
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 
-from apps.events.models import Event, EventTeam
+from apps.events.models import (
+    Event,
+    EventMatchConfiguration,
+    EventMatchTemplate,
+    EventMatchTemplateItem,
+    EventTeam,
+)
 from apps.matches.models import (
     BaseMatch,
-    EventMatchConfiguration,
-    MatchTemplate,
-    MatchTemplateItem,
 )
 from apps.matches.services import MatchService
 from apps.teams.models import Team
@@ -29,9 +32,11 @@ class MatchScoringTests(TestCase):
         self.team_b = EventTeam.objects.create(event=self.event, team=t_b)
 
         # Setup Template
-        self.template = MatchTemplate.objects.create(name='Standard 5 Matches', creator=self.user)
+        self.template = EventMatchTemplate.objects.create(
+            name='Standard 5 Matches', creator=self.user
+        )
         for i in range(1, 6):
-            MatchTemplateItem.objects.create(template=self.template, number=i)
+            EventMatchTemplateItem.objects.create(template=self.template, number=i)
 
         self.config = EventMatchConfiguration.objects.create(
             event=self.event,

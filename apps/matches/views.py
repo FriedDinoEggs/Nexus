@@ -1,21 +1,10 @@
 from django.db.models import Q
 from rest_framework import permissions, viewsets
 
-from apps.users.permissions import IsEventManagerGroup, IsSuperAdminGroup
+from apps.users.permissions import IsEventManagerGroup
 
-from .models import MatchTemplate, TeamMatch
-from .serializers import MatchTemplateSerializer, TeamMatchSerializer
-
-
-class MatchTemplateViewSet(viewsets.ModelViewSet):
-    queryset = MatchTemplate.objects.all().prefetch_related('items')
-    serializer_class = MatchTemplateSerializer
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get_permissions(self):
-        if self.action in ['create', 'update', 'partial_update', 'destroy']:
-            return [(IsSuperAdminGroup | IsEventManagerGroup)()]
-        return super().get_permissions()
+from .models import TeamMatch
+from .serializers import TeamMatchSerializer
 
 
 class TeamMatchViewSet(viewsets.ModelViewSet):

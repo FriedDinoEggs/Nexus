@@ -1,10 +1,9 @@
 from rest_framework.routers import DefaultRouter
 
-from apps.matches.views import MatchTemplateViewSet, TeamMatchViewSet
+from apps.matches.views import TeamMatchViewSet
 
 router = DefaultRouter()
 
-router.register('match-template', MatchTemplateViewSet, basename='match-template')
 router.register('team-matches', TeamMatchViewSet, basename='team-matches')
 
 urlpatterns = []

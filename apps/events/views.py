@@ -10,8 +10,9 @@ from apps.users.permissions import (
     IsSuperAdminGroup,
 )
 
-from .models import Event, EventTeam, EventTeamMember, LunchOption
+from .models import Event, EventMatchTemplate, EventTeam, EventTeamMember, LunchOption
 from .serializers import (
+    EventMatchTemplateSerializer,
     EventSerializer,
     EventTeamMemberSerializer,
     EventTeamSerializer,
@@ -20,6 +21,22 @@ from .serializers import (
 from .services import EventService
 
 User = get_user_model()
+
+
+class MatchTemplateViewSet(viewsets.ModelViewSet):
+    queryset = EventMatchTemplate.objects.all().prefetch_related('items')
+
+    serializer_class = EventMatchTemplateSerializer
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    lookup_url_kwarg = 'id'
+
+    def get_permissions(self):
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+            return [(IsSuperAdminGroup | IsEventManagerGroup)()]
+
+        return super().get_permissions()
 
 
 class EventViewSet(viewsets.ModelViewSet):

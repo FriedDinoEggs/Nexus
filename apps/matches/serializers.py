@@ -3,8 +3,6 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 
 from .models import (
-    MatchTemplate,
-    MatchTemplateItem,
     PlayerMatch,
     PlayerMatchParticipant,
     TeamMatch,
@@ -12,37 +10,6 @@ from .models import (
 from .services import MatchService
 
 User = get_user_model()
-
-
-class MatchTemplateItemSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = MatchTemplateItem
-        fields = ['id', 'number', 'format', 'requirement']
-
-
-class MatchTemplateSerializer(serializers.ModelSerializer):
-    items = MatchTemplateItemSerializer(many=True)
-    creator_name = serializers.ReadOnlyField(source='creator.full_name')
-
-    class Meta:
-        model = MatchTemplate
-        fields = ['id', 'name', 'creator', 'creator_name', 'items', 'created_at']
-        read_only_fields = ['creator', 'created_at']
-
-    def create(self, validated_data):
-        items_data = validated_data.pop('items')
-        request = self.context.get('request')
-        creator = request.user if request and request.user.is_authenticated else None
-
-        return MatchService.create_match_template(
-            name=validated_data['name'], items_data=items_data, creator=creator
-        )
-
-    def update(self, instance, validated_data):
-        items_data = validated_data.pop('items', None)
-        return MatchService.update_match_template(
-            template=instance, name=validated_data.get('name'), items_data=items_data
-        )
 
 
 class PlayerMatchParticipantSerializer(serializers.ModelSerializer):
@@ -135,7 +102,7 @@ class TeamMatchSerializer(serializers.ModelSerializer):
             return MatchService.create_team_match_full(
                 team_a=validated_data['team_a'],
                 team_b=validated_data['team_b'],
-                match_number=validated_data['number'],
+                match_number=validated_data.get('number', None),
                 player_matches_data=transformed_data,
             )
         except (ValueError, DjangoValidationError) as e:

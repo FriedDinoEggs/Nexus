@@ -40,7 +40,7 @@ class Event(SoftDeleteModel):
                 condition=Q(start_time__isnull=True)
                 | Q(end_time__isnull=True)
                 | Q(start_time__lt=F('end_time')),
-                name='check_start_time_before_end_time',
+                name='%(app_label)s_%(class)s_check_start_time_before_end_time',
                 violation_error_message='The event end time must be later than the start time.',
             ),
         ]
@@ -73,7 +73,7 @@ class EventTeam(TimeStampedModel):
         constraints = [
             UniqueConstraint(
                 fields=['event', 'team'],
-                name='unique_event_team',
+                name='%(app_label)s_%(class)s_unique_event_team',
                 violation_error_message='The combination of Event and Team must be unique',
             ),
         ]
@@ -95,7 +95,7 @@ class EventTeamMember(TimeStampedModel):
         constraints = [
             UniqueConstraint(
                 fields=['event_team', 'user'],
-                name='unique_eventteam_user',
+                name='%(app_label)s_%(class)s_unique_eventteam_user',
                 violation_error_message='The combination of EventTeam and User must be unique',
             )
         ]
@@ -137,3 +137,90 @@ class RegistrationLunchOrder(TimeStampedModel):
 
     def __str__(self):
         return f'{self.member.user.full_name}: {self.quantity} x {self.option.name}'
+
+
+class PlayerMatchConfiguration(models.Model):
+    class MatchFormatChoice(models.TextChoices):
+        SINGLE = 'S', 'Single'
+        DOUBLE = 'D', 'Double'
+
+    format = models.CharField(
+        max_length=1,
+        choices=MatchFormatChoice.choices,
+        default=MatchFormatChoice.SINGLE,
+        verbose_name='match format',
+    )
+    requirement = models.CharField(
+        max_length=32,
+        default='',
+        blank=True,
+        verbose_name='Match requirement',
+        help_text=(
+            'Specify the age, gender, or category for this match'
+            ' (e.g., "30+ Men\'s Singles", "120+ Mixed Doubles").'
+        ),
+    )
+
+    class Meta:
+        abstract = True
+
+
+class EventMatchTemplate(TimeStampedModel):
+    name = models.CharField(max_length=128, verbose_name='Template Name')
+    creator = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return self.name
+
+
+class EventMatchTemplateItem(PlayerMatchConfiguration, TimeStampedModel):
+    template = models.ForeignKey(EventMatchTemplate, on_delete=models.CASCADE, related_name='items')
+    number = models.IntegerField(default=0)
+
+    class Meta:
+        ordering = ['number']
+        constraints = [
+            UniqueConstraint(
+                fields=['template', 'number'],
+                name='%(app_label)s_%(class)s_unique_template_item_number',
+                violation_error_message='Match number must be unique within a template.',
+            )
+        ]
+
+    def __str__(self):
+        return f'{self.template.name} - Match {self.number}'
+
+
+def get_default_rule_config():
+    return {
+        'winning_sets': 3,  # Number of sets to win a PlayerMatch
+        'set_winning_points': 11,  # Points needed to win a single set
+        'use_deuce': True,  # Whether to use deuce rule (must win by 2 points)
+        'team_winning_points': 3,  # Number of points (matches) to win a TeamMatch
+        'play_all_sets': False,  # Must play all sets, overrides winning_sets setting
+        'play_all_matches': False,  # Must play all matches, overrides team_winning_points setting
+        'count_points_by_sets': False,  # Whether to count set scores (e.g. 4ㄚ:2) or win/loss (1:0)
+    }
+
+
+class EventMatchConfiguration(TimeStampedModel):
+    event = models.OneToOneField(Event, on_delete=models.CASCADE, related_name='match_config')
+
+    template = models.ForeignKey(
+        EventMatchTemplate, on_delete=models.PROTECT, related_name='event_configs'
+    )
+
+    rule_config = models.JSONField(
+        default=get_default_rule_config,
+        blank=True,
+        help_text='Configuration for scoring rules (e.g. winning_sets, etc.)',
+    )
+
+    class Meta:
+        ordering = ['created_at']
+
+    def __str__(self):
+        return f'Config for {self.event.name} using {self.template.name}'

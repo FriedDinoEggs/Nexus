@@ -3,13 +3,13 @@ from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.db import transaction
 
-from apps.events.models import Event, EventTeam
+from apps.events.models import (
+    EventMatchConfiguration,
+    EventTeam,
+)
 
 from .models import (
-    EventMatchConfiguration,
     MatchSet,
-    MatchTemplate,
-    MatchTemplateItem,
     PlayerMatch,
     PlayerMatchParticipant,
     TeamMatch,
@@ -20,50 +20,6 @@ User = get_user_model()
 
 
 class MatchService:
-    @staticmethod
-    @transaction.atomic
-    def create_match_template(
-        *, name: str, items_data: list[dict], creator: User | None = None
-    ) -> MatchTemplate:
-        """Create a match template with its items."""
-        template = MatchTemplate.objects.create(name=name, creator=creator)
-        items = [
-            MatchTemplateItem(
-                template=template,
-                number=item['number'],
-                format=item.get('format', MatchTemplateItem.MatchFormatChoice.SINGLE),
-                requirement=item.get('requirement', ''),
-            )
-            for item in items_data
-        ]
-        MatchTemplateItem.objects.bulk_create(items)
-        return template
-
-    @staticmethod
-    @transaction.atomic
-    def update_match_template(
-        *, template: MatchTemplate, name: str | None = None, items_data: list[dict] | None = None
-    ) -> MatchTemplate:
-        """Update a match template and its items."""
-        if name is not None:
-            template.name = name
-            template.save()
-
-        if items_data is not None:
-            template.items.all().delete()
-            items = [
-                MatchTemplateItem(
-                    template=template,
-                    number=item['number'],
-                    format=item.get('format', MatchTemplateItem.MatchFormatChoice.SINGLE),
-                    requirement=item.get('requirement', ''),
-                )
-                for item in items_data
-            ]
-            MatchTemplateItem.objects.bulk_create(items)
-
-        return template
-
     @staticmethod
     @transaction.atomic
     def create_team_match_full(
@@ -98,7 +54,8 @@ class MatchService:
     @staticmethod
     @transaction.atomic
     def initialize_team_match(team_a: EventTeam, team_b: EventTeam, match_number: int):
-        """Initialize a team match and create scheduled matches based on Event's MatchTemplate"""
+        """Initialize a team match and create scheduled matches
+        based on Event's EventMatchTemplate"""
         if team_a.event != team_b.event:
             raise ValueError('Both teams must belong to the same event.')
 
@@ -163,75 +120,6 @@ class MatchService:
             team_match = TeamMatch.objects.create(team_a=team_a, team_b=team_b, number=match_number)
 
         return team_match
-
-    @staticmethod
-    @transaction.atomic
-    def configure_event_match_format(
-        event: Event,
-        format_data: list[dict],
-        template_name: str | None = None,
-        creator: User | None = None,
-    ):
-        """Configure or update event match format template"""
-        if not template_name:
-            template_name = f'{event.name} Format'
-
-        new_template = MatchTemplate.objects.create(name=template_name, creator=creator)
-        items = [
-            MatchTemplateItem(
-                template=new_template,
-                number=item['number'],
-                format=item.get('format', MatchTemplateItem.MatchFormatChoice.SINGLE),
-                requirement=item.get('requirement', ''),
-            )
-            for item in format_data
-        ]
-        MatchTemplateItem.objects.bulk_create(items)
-
-        EventMatchConfiguration.objects.update_or_create(
-            event=event, defaults={'template': new_template}
-        )
-        return new_template
-
-    @staticmethod
-    def validate_match_format(event: Event, format_data: list[dict]) -> None:
-        """Validate if input format matches the event's current template"""
-        try:
-            config = event.match_config
-            template = config.template
-        except EventMatchConfiguration.DoesNotExist:
-            raise ValidationError('No match configuration set for this event.') from None
-
-        template_items = list(template.items.all().order_by('number'))
-        if len(format_data) != len(template_items):
-            raise ValidationError(
-                f'Number of matches mismatch: expected {len(template_items)}, '
-                f'got {len(format_data)}.'
-            )
-
-        sorted_input = sorted(format_data, key=lambda x: x.get('number', 0))
-        for input_item, template_item in zip(sorted_input, template_items, strict=True):
-            MatchService._validate_item(input_item, template_item)
-
-    @staticmethod
-    def _validate_item(input_item: dict, template_item: MatchTemplateItem):
-        """Internal validation for a single item format"""
-        if input_item.get('number') != template_item.number:
-            raise ValidationError(f'Match number mismatch at index {input_item.get("number")}.')
-
-        if input_item.get('format') != template_item.format:
-            raise ValidationError(
-                f'Format mismatch for match {template_item.number}: '
-                f'expected {template_item.get_format_display()}, '
-                f'got {input_item.get("format")}.'
-            )
-
-        if input_item.get('requirement') != template_item.requirement:
-            raise ValidationError(
-                f'Requirement mismatch for match {template_item.number}: '
-                f"expected '{template_item.requirement}', "
-                f"got '{input_item.get('requirement')}'."
-            )
 
     @staticmethod
     def assign_player_to_match(
