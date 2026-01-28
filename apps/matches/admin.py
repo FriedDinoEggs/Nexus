@@ -1,26 +1,11 @@
 from django.contrib import admin
 
 from .models import (
-    EventMatchConfiguration,
     MatchSet,
-    MatchTemplate,
-    MatchTemplateItem,
     PlayerMatch,
     PlayerMatchParticipant,
     TeamMatch,
 )
-
-
-class MatchTemplateItemInline(admin.TabularInline):
-    model = MatchTemplateItem
-    extra = 1
-
-
-@admin.register(MatchTemplate)
-class MatchTemplateAdmin(admin.ModelAdmin):
-    list_display = ('name', 'creator', 'created_at')
-    inlines = [MatchTemplateItemInline]
-    search_fields = ('name',)
 
 
 class PlayerMatchParticipantInline(admin.TabularInline):
@@ -56,12 +41,6 @@ class TeamMatchAdmin(admin.ModelAdmin):
     list_filter = ('status', 'date')
     inlines = [PlayerMatchInline]
     search_fields = ('team_a__team__name', 'team_b__team__name')
-
-
-@admin.register(EventMatchConfiguration)
-class EventMatchConfigurationAdmin(admin.ModelAdmin):
-    list_display = ('event', 'template')
-    list_filter = ('template',)
 
 
 admin.site.register(MatchSet)

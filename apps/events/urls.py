@@ -7,12 +7,14 @@ from apps.events.views import (
     EventTeamViewSet,
     EventViewSet,
     LunchOptionsViewSet,
+    MatchTemplateViewSet,
 )
 from apps.matches.views import TeamMatchViewSet
 
 router = DefaultRouter()
 router.register(r'events', EventViewSet, basename='events')
 router.register(r'event-teams', EventTeamViewSet, basename='event-teams')
+router.register(r'match-templates', MatchTemplateViewSet, basename='match-templates')
 
 event_team_router = routers.NestedSimpleRouter(router, r'events', lookup='event')
 event_team_router.register(r'event-teams', EventTeamViewSet, basename='event-teams-nested')

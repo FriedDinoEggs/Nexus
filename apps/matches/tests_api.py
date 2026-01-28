@@ -4,68 +4,59 @@ from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from .models import MatchTemplate
+from apps.events.models import Event, EventMatchConfiguration, EventMatchTemplate, EventTeam
+from apps.matches.models import TeamMatch
+from apps.teams.models import Team
 
 User = get_user_model()
 
 
-class MatchTemplateAPITests(APITestCase):
+class TeamMatchAPITests(APITestCase):
     def setUp(self):
-        self.admin_user = User.objects.create_user(
-            email='admin@example.com', password='password', full_name='Admin User'
+        self.user = User.objects.create_user(
+            email='test@example.com', password='password', full_name='Test User'
         )
-        self.event_manager_user = User.objects.create_user(
-            email='manager@example.com', password='password', full_name='Manager User'
-        )
-        self.regular_user = User.objects.create_user(
-            email='user@example.com', password='password', full_name='Regular User'
-        )
-
-        self.admin_group, _ = Group.objects.get_or_create(name='SuperAdmin')
         self.manager_group, _ = Group.objects.get_or_create(name='EventManager')
+        self.user.groups.add(self.manager_group)
+        self.client.force_authenticate(user=self.user)
 
-        self.admin_user.groups.add(self.admin_group)
-        self.event_manager_user.groups.add(self.manager_group)
+        # Setup basic event and teams
+        self.event = Event.objects.create(name='Test Event')
+        self.team_a_base = Team.objects.create(name='Team A', creator=self.user)
+        self.team_b_base = Team.objects.create(name='Team B', creator=self.user)
 
-        self.template_url = reverse('v1:matches:match-template-list')
+        self.team_a = EventTeam.objects.create(event=self.event, team=self.team_a_base)
+        self.team_b = EventTeam.objects.create(event=self.event, team=self.team_b_base)
 
-    def test_create_template_as_admin(self):
-        self.client.force_authenticate(user=self.admin_user)
+        # Setup Match Template and Config
+        self.template = EventMatchTemplate.objects.create(
+            name='Standard Template', creator=self.user
+        )
+        self.config = EventMatchConfiguration.objects.create(
+            event=self.event, template=self.template, rule_config={'team_winning_points': 3}
+        )
+
+        self.list_url = reverse('v1:matches_app:team-matches-list')
+
+    def test_list_team_matches(self):
+        TeamMatch.objects.create(team_a=self.team_a, team_b=self.team_b, number=1)
+        response = self.client.get(self.list_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # Check pagination
+        if isinstance(response.data, dict) and 'results' in response.data:
+            self.assertEqual(response.data['count'], 1)
+        else:
+            self.assertEqual(len(response.data), 1)
+
+    def test_create_team_match(self):
         data = {
-            'name': 'Admin Template',
-            'items': [
-                {'number': 1, 'format': 'S', 'requirement': "Men's Singles"},
-                {'number': 2, 'format': 'D', 'requirement': "Men's Doubles"},
+            'team_a': self.team_a.id,
+            'team_b': self.team_b.id,
+            'number': 2,
+            'player_matches': [
+                {'number': 1, 'side_a': [{'player': self.user.id, 'position': 1}], 'side_b': []}
             ],
         }
-        response = self.client.post(self.template_url, data, format='json')
+        response = self.client.post(self.list_url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(MatchTemplate.objects.count(), 1)
-        self.assertEqual(MatchTemplate.objects.first().items.count(), 2)
-
-    def test_create_template_as_manager(self):
-        self.client.force_authenticate(user=self.event_manager_user)
-        data = {
-            'name': 'Manager Template',
-            'items': [{'number': 1, 'format': 'S', 'requirement': "Women's Singles"}],
-        }
-        response = self.client.post(self.template_url, data, format='json')
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-
-    def test_create_template_as_regular_user_forbidden(self):
-        self.client.force_authenticate(user=self.regular_user)
-        data = {'name': 'Regular Template', 'items': []}
-        response = self.client.post(self.template_url, data, format='json')
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-
-    def test_list_templates_authenticated(self):
-        initial_count = MatchTemplate.objects.count()
-        MatchTemplate.objects.create(name='Public Template', creator=self.admin_user)
-        self.client.force_authenticate(user=self.regular_user)
-        response = self.client.get(self.template_url)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        # Handle pagination
-        if isinstance(response.data, dict) and 'results' in response.data:
-            self.assertEqual(response.data['count'], initial_count + 1)
-        else:
-            self.assertEqual(len(response.data), initial_count + 1)
+        self.assertEqual(TeamMatch.objects.filter(number=2).count(), 1)

@@ -3,12 +3,11 @@ from django.db import transaction
 from rest_framework import serializers
 from rest_framework.relations import PrimaryKeyRelatedField
 
-from apps.matches.models import MatchTemplate
-from apps.matches.services import MatchService
-
 from .models import (
     Event,
     EventMatchConfiguration,
+    EventMatchTemplate,
+    EventMatchTemplateItem,
     EventTeam,
     EventTeamMember,
     LunchOption,
@@ -18,7 +17,7 @@ from .services import EventService
 
 
 class EventMatchConfigurationSerializer(serializers.ModelSerializer):
-    template = serializers.PrimaryKeyRelatedField(queryset=MatchTemplate.objects.all())
+    template = serializers.PrimaryKeyRelatedField(queryset=EventMatchTemplate.objects.all())
     template_name = serializers.ReadOnlyField(source='template.name')
 
     class Meta:
@@ -173,7 +172,7 @@ class EventSerializer(serializers.ModelSerializer):
                 LunchOption.objects.bulk_create(options)
 
             if match_config_data:
-                MatchService.set_event_config(
+                EventService.set_event_config(
                     event=event,
                     template=match_config_data['template'],
                     rule_config=match_config_data.get('rule_config'),
@@ -199,10 +198,41 @@ class EventSerializer(serializers.ModelSerializer):
             LunchOption.objects.bulk_create(options)
 
         if match_config_data:
-            MatchService.set_event_config(
+            EventService.set_event_config(
                 event=instance,
                 template=match_config_data['template'],
                 rule_config=match_config_data.get('rule_config'),
             )
 
         return instance
+
+
+class EventMatchTemplateItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EventMatchTemplateItem
+        fields = ['id', 'number', 'format', 'requirement']
+
+
+class EventMatchTemplateSerializer(serializers.ModelSerializer):
+    items = EventMatchTemplateItemSerializer(many=True)
+    creator_name = serializers.ReadOnlyField(source='creator.full_name')
+
+    class Meta:
+        model = EventMatchTemplate
+        fields = ['id', 'name', 'creator', 'creator_name', 'items', 'created_at']
+        read_only_fields = ['creator', 'created_at']
+
+    def create(self, validated_data):
+        items_data = validated_data.pop('items')
+        request = self.context.get('request')
+        creator = request.user if request and request.user.is_authenticated else None
+
+        return EventService.create_match_template(
+            name=validated_data['name'], items_data=items_data, creator=creator
+        )
+
+    def update(self, instance, validated_data):
+        items_data = validated_data.pop('items', None)
+        return EventService.update_match_template(
+            template=instance, name=validated_data.get('name'), items_data=items_data
+        )

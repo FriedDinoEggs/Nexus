@@ -5,7 +5,7 @@ from django.db.models import CheckConstraint, F, Q, UniqueConstraint
 from django.db.models.functions import Greatest, Least
 
 from apps.core.models import SoftDeleteModel, TimeStampedModel
-from apps.events.models import EventTeam
+from apps.events.models import EventTeam, PlayerMatchConfiguration
 
 # Create your models here.
 User = get_user_model()
@@ -89,33 +89,7 @@ class TeamMatch(BaseMatch):
         return f'{name_a} vs {name_b}'
 
 
-class BaseMatchConfiguration(models.Model):
-    class MatchFormatChoice(models.TextChoices):
-        SINGLE = 'S', 'Single'
-        DOUBLE = 'D', 'Double'
-
-    format = models.CharField(
-        max_length=1,
-        choices=MatchFormatChoice.choices,
-        default=MatchFormatChoice.SINGLE,
-        verbose_name='match format',
-    )
-    requirement = models.CharField(
-        max_length=32,
-        default='',
-        blank=True,
-        verbose_name='Match requirement',
-        help_text=(
-            'Specify the age, gender, or category for this match'
-            ' (e.g., "30+ Men\'s Singles", "120+ Mixed Doubles").'
-        ),
-    )
-
-    class Meta:
-        abstract = True
-
-
-class PlayerMatch(BaseMatch, BaseMatchConfiguration):
+class PlayerMatch(BaseMatch, PlayerMatchConfiguration):
     team_match = models.ForeignKey(
         TeamMatch, on_delete=models.CASCADE, related_name='player_matches'
     )
@@ -134,33 +108,16 @@ class PlayerMatch(BaseMatch, BaseMatchConfiguration):
         return f'Player match order {self.number} ({self.requirement})'
 
 
-class MatchTemplate(TimeStampedModel):
-    name = models.CharField(max_length=128, verbose_name='Template Name')
-    creator = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
-
-    class Meta:
-        ordering = ['-created_at']
-
-    def __str__(self):
-        return self.name
-
-
-class MatchTemplateItem(BaseMatchConfiguration, TimeStampedModel):
-    template = models.ForeignKey(MatchTemplate, on_delete=models.CASCADE, related_name='items')
-    number = models.IntegerField(default=0)
-
-    class Meta:
-        ordering = ['number']
-        constraints = [
-            UniqueConstraint(
-                fields=['template', 'number'],
-                name='%(app_label)s_%(class)s_unique_template_item_number',
-                violation_error_message='Match number must be unique within a template.',
-            )
-        ]
-
-    def __str__(self):
-        return f'{self.template.name} - Match {self.number}'
+def get_default_rule_config():
+    return {
+        'winning_sets': 3,  # Number of sets to win a PlayerMatch
+        'set_winning_points': 11,  # Points needed to win a single set
+        'use_deuce': True,  # Whether to use deuce rule (must win by 2 points)
+        'team_winning_points': 3,  # Number of points (matches) to win a TeamMatch
+        'play_all_sets': False,  # Must play all sets, overrides winning_sets setting
+        'play_all_matches': False,  # Must play all matches, overrides team_winning_points setting
+        'count_points_by_sets': False,  # Whether to count set scores (e.g. 3:2) or win/loss (1:0)
+    }
 
 
 class MatchSet(TimeStampedModel):

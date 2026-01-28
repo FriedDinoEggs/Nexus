@@ -1,6 +1,32 @@
 from django.contrib import admin
 
-from .models import Event, EventTeam, EventTeamMember, LunchOption, RegistrationLunchOrder
+from .models import (
+    Event,
+    EventMatchConfiguration,
+    EventMatchTemplate,
+    EventMatchTemplateItem,
+    EventTeam,
+    EventTeamMember,
+    LunchOption,
+    RegistrationLunchOrder,
+)
+
+
+class MatchTemplateItemInline(admin.TabularInline):
+    model = EventMatchTemplateItem
+    extra = 5
+
+
+@admin.register(EventMatchTemplate)
+class MatchTemplateAdmin(admin.ModelAdmin):
+    list_display = ('name', 'creator', 'created_at')
+    inlines = [MatchTemplateItemInline]
+
+
+@admin.register(EventMatchConfiguration)
+class EventMatchConfigurationAdmin(admin.ModelAdmin):
+    list_display = ('event', 'template')
+    list_filter = ('template',)
 
 
 class EventTeamMemberInline(admin.TabularInline):
