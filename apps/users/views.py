@@ -269,11 +269,11 @@ class CustomJWTLogoutView(TokenBlacklistView):
     authentication_classes = [CustomJWTAuthentication]
 
     def post(self, request, *args, **kwargs):
-        access_token = request.auth
-        if access_token is not None:
+        resp = super().post(request, *args, **kwargs)
+        if resp.status_code < 400:
+            access_token = request.auth
             BlackListService.set_blacklisted(token=access_token, user=request.user)
-
-        return super().post(request, *args, **kwargs)
+        return resp
 
 
 class IPBaseThrottle(SimpleRateThrottle):
