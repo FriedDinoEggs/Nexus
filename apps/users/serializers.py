@@ -2,6 +2,7 @@ import secrets
 from dataclasses import asdict
 
 from django.contrib.auth import authenticate, get_user_model
+from django.contrib.auth.password_validation import validate_password as django_validate_password
 from rest_framework import serializers
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework_simplejwt.serializers import (
@@ -72,6 +73,10 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         if attrs['password'] != attrs['password_confirm']:
             raise serializers.ValidationError({'password_confirm': 'Passwords do not match'})
+        return attrs
+
+    def validate_password(self, attrs):
+        django_validate_password(attrs, self.instance)
         return attrs
 
     def validate_date_of_birth(self, attrs):
