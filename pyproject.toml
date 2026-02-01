@@ -19,6 +19,7 @@ dependencies = [
     "flake8-django>=1.4",
     "google-auth>=2.47.0",
     "google-auth-oauthlib>=1.2.4",
+    "granian>=2.6.1",
     "mailtrap>=2.4.0",
     "pillow>=12.0.0",
     "psycopg[binary]>=3.3.1",
