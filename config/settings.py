@@ -109,6 +109,12 @@ else:
             "PASSWORD": os.getenv("NEXUS_DB_PWD"),
             "HOST": os.getenv("NEXUS_DB_HOST"),
             "PORT": os.getenv("NEXUS_DB_PORT"),
+            'OPTIONS': {
+                'pool': {
+                    'min_size': 2,
+                    'max_size': 4,
+                },
+            },
         }
     }
 
