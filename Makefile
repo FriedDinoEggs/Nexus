@@ -44,7 +44,7 @@ lint-fix:
 	@echo " Auto-fixed issues!"
 
 up:
-	docker compose -f ./compose.yaml -p nexus-test up -d
+	docker compose -f ./compose.yaml -p nexus-test up -d --build
 
 down:
 	docker compose -p nexus-test down -t 10
