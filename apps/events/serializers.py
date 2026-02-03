@@ -18,9 +18,34 @@ from .models import (
 from .services import EventService
 
 
+class RuleConfigSerializer(serializers.Serializer):
+    winning_sets = serializers.IntegerField(
+        default=3, help_text='Number of sets to win a PlayerMatch'
+    )
+    set_winning_points = serializers.IntegerField(
+        default=11, help_text='Points needed to win a single set'
+    )
+    use_deuce = serializers.BooleanField(
+        default=True, help_text='Whether to use deuce rule (must win by 2 points)'
+    )
+    team_winning_points = serializers.IntegerField(
+        default=3, help_text='Number of points (matches) to win a TeamMatch'
+    )
+    play_all_sets = serializers.BooleanField(
+        default=False, help_text='Must play all sets, overrides winning_sets setting'
+    )
+    play_all_matches = serializers.BooleanField(
+        default=False, help_text='Must play all matches, overrides team_winning_points setting'
+    )
+    count_points_by_sets = serializers.BooleanField(
+        default=False, help_text='Whether to count set scores (e.g. 4:2) or win/loss (1:0)'
+    )
+
+
 class EventMatchConfigurationSerializer(serializers.ModelSerializer):
     template = serializers.PrimaryKeyRelatedField(queryset=EventMatchTemplate.objects.all())
     template_name = serializers.ReadOnlyField(source='template.name')
+    rule_config = RuleConfigSerializer(required=False)
 
     class Meta:
         model = EventMatchConfiguration
@@ -133,7 +158,7 @@ class LunchOptionSerializer(serializers.ModelSerializer):
 class EventSerializer(serializers.ModelSerializer):
     event_teams = EventTeamSerializer(many=True, read_only=True)
     lunch_options = LunchOptionSerializer(many=True, required=False)
-    match_config = EventMatchConfigurationSerializer(required=False)
+    match_config = EventMatchConfigurationSerializer(required=True)
     location_name = serializers.CharField(required=False, allow_null=True, max_length=128)
 
     class Meta:
