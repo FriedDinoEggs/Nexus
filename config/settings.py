@@ -10,11 +10,17 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 import os
+from dotenv import load_dotenv
 from pathlib import Path
 import datetime
 
+load_dotenv()
 
+def get_bool_env(key: str, default: str = 'False') -> bool:
+    value = os.getenv(key, default=default).lower()
+    return value in {'true', '1', 'yes', 'on', 't'}
 
+DEBUG = get_bool_env('DEBUG')
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -22,10 +28,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
+ALLOW_HOST='PROD_ALLOW_HOST'
 
-# ALLOWED_HOSTS = os.getenv('ALLOW_HOST', '').split(',')
-ALLOWED_HOSTS = ['*',]
+if DEBUG:
+    ALLOW_HOST='ALLOW_HOST'
 
+
+ALLOWED_HOSTS = [host.strip() for host in os.environ[ALLOW_HOST].split(',') if host.strip()]
 
 # Application definition
 
@@ -82,7 +91,6 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 if os.getenv('CI'):
     SECRET_KEY = '(m)zk25=oele=qi*$==$l(x4loi%(x$pccsd&gj5v^m82514$c'
-    DEBUG = False
     
     DATABASES = {
         "default": {
@@ -95,20 +103,16 @@ if os.getenv('CI'):
         }
     }
 else:
-    from dotenv import load_dotenv
-    load_dotenv()
-    
-    SECRET_KEY = os.getenv('NEXUS_SECRET_KEY')
-    DEBUG=True
+    SECRET_KEY = os.environ['NEXUS_SECRET_KEY']
     
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.postgresql",
-            "NAME": os.getenv("NEXUS_DB_NAME"),
-            "USER": os.getenv("NEXUS_DB_USER"),
-            "PASSWORD": os.getenv("NEXUS_DB_PWD"),
-            "HOST": os.getenv("NEXUS_DB_HOST"),
-            "PORT": os.getenv("NEXUS_DB_PORT"),
+            "NAME": os.environ['NEXUS_DB_NAME'],
+            "USER": os.environ["NEXUS_DB_USER"],
+            "PASSWORD": os.environ['NEXUS_DB_PWD'],
+            "HOST": os.environ['NEXUS_DB_HOST'],
+            "PORT": os.environ['NEXUS_DB_PORT'],
             'OPTIONS': {
                 'pool': {
                     'min_size': 2,
@@ -232,10 +236,12 @@ CELERY_RESULT_BACKEND = f'redis://:{os.environ["REDIS_PASSWORD"]}@localhost:6379
 CELERY_RESULT_EXPIRES = 60*60
 
 # Mailtrap
+MAILTRAP_USE_SANDBOX = False
 MAILTRAP_API_KEY = os.getenv('MAILTRAP_KEY')
 MAILTRAP_DOMAIN = os.getenv('MAILTRAP_DOMAIN')
-MAILTRAP_USE_SANDBOX = True       # true/false toggle
 MAILTRAP_INBOX_ID = os.getenv('MAILTRAP_INBOX_ID')
+if DEBUG:
+    MAILTRAP_USE_SANDBOX = True
 
 SITE_BASEURL = 'localhost:8000'
 
@@ -252,10 +258,10 @@ else:
     CACHES = {
         "default": {
             "BACKEND": "django_redis.cache.RedisCache",
-            "LOCATION": os.getenv('REDIS_LOCATION'),
+            "LOCATION": os.environ['REDIS_LOCATION'],
             "OPTIONS": {
                 "CLIENT_CLASS": "django_redis.client.DefaultClient",
-                "PASSWORD": os.getenv('REDIS_PASSWORD'),
+                "PASSWORD": os.environ['REDIS_PASSWORD'],
             }
         }
     }
