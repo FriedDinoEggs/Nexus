@@ -1,4 +1,4 @@
-.PHONY: help install migrate test lint run create_test_user set_groups up down
+.PHONY: help install migrate test lint run create_test_user set_groups up down run_granian
 
 MANAGE := uv run manage.py
 
@@ -19,6 +19,9 @@ set_groups:
 
 run:
 	$(MANAGE) runserver
+
+run_granian:
+	uv run granian config.wsgi:application --interface wsgi --host 127.0.0.1 --port 8000 --workers 1 --blocking-threads 1 --access-log
 
 run_celery:
 	uv run celery -A config worker -l INFO

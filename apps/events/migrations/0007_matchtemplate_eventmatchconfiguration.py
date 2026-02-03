@@ -39,7 +39,7 @@ class Migration(migrations.Migration):
                 ('template', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='event_configs', to='events.matchtemplate')),
             ],
             options={
-                'db_table': 'matches_eventmatchconfigureation',
+                'db_table': 'matches_eventmatchconfiguration',
                 'ordering': ['created_at'],
             },
         ),

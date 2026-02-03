@@ -3,6 +3,8 @@ from django.db import transaction
 from rest_framework import serializers
 from rest_framework.relations import PrimaryKeyRelatedField
 
+from apps.core.models import Location
+
 from .models import (
     Event,
     EventMatchConfiguration,
@@ -128,11 +130,18 @@ class LunchOptionSerializer(serializers.ModelSerializer):
         fields = ['id', 'event', 'name', 'price']
 
 
+class EventLocationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Location
+        fields = ['id', 'name', 'address']
+
+
 class EventSerializer(serializers.ModelSerializer):
     event_teams = EventTeamSerializer(many=True, read_only=True)
     lunch_options = LunchOptionSerializer(many=True, required=False)
     match_config = EventMatchConfigurationSerializer(required=False)
-    # location_name = serializers.ReadOnlyField(source='location.name')
+    location = EventLocationSerializer(required=False)
+    location_name = serializers.ReadOnlyField(source='location.name')
 
     class Meta:
         model = Event
@@ -143,12 +152,11 @@ class EventSerializer(serializers.ModelSerializer):
             'end_time',
             'type',
             'location',
-            # 'location_name',
+            'location_name',
             'event_teams',
             'lunch_options',
             'match_config',
         ]
-        depth = 1
 
     @transaction.atomic
     def create(self, validated_data):
