@@ -130,18 +130,11 @@ class LunchOptionSerializer(serializers.ModelSerializer):
         fields = ['id', 'event', 'name', 'price']
 
 
-class EventLocationSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Location
-        fields = ['id', 'name', 'address']
-
-
 class EventSerializer(serializers.ModelSerializer):
     event_teams = EventTeamSerializer(many=True, read_only=True)
     lunch_options = LunchOptionSerializer(many=True, required=False)
     match_config = EventMatchConfigurationSerializer(required=False)
-    location = EventLocationSerializer(required=False)
-    location_name = serializers.ReadOnlyField(source='location.name')
+    location_name = serializers.CharField(required=False, allow_null=True, max_length=128)
 
     class Meta:
         model = Event
@@ -151,17 +144,27 @@ class EventSerializer(serializers.ModelSerializer):
             'start_time',
             'end_time',
             'type',
-            'location',
             'location_name',
             'event_teams',
             'lunch_options',
             'match_config',
         ]
 
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        if instance.location:
+            ret['location_name'] = instance.location.name
+        return ret
+
     @transaction.atomic
     def create(self, validated_data):
         lunch_options_data = validated_data.pop('lunch_options', [])
         match_config_data = validated_data.pop('match_config', None)
+        location_name = validated_data.pop('location_name', None)
+
+        if location_name:
+            location, _ = Location.objects.get_or_create(name=location_name)
+            validated_data['location'] = location
 
         try:
             event = EventService.create_event(
@@ -194,6 +197,14 @@ class EventSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         lunch_options_data = validated_data.pop('lunch_options', None)
         match_config_data = validated_data.pop('match_config', None)
+        location_name = validated_data.pop('location_name', None)
+
+        if location_name is not None:
+            if location_name:
+                location, _ = Location.objects.get_or_create(name=location_name)
+                validated_data['location'] = location
+            else:
+                validated_data['location'] = None
 
         instance = super().update(instance, validated_data)
 
