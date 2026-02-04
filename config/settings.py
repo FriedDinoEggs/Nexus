@@ -20,7 +20,7 @@ def get_bool_env(key: str, default: str = 'False') -> bool:
     value = os.getenv(key, default=default).lower()
     return value in {'true', '1', 'yes', 'on', 't'}
 
-DEBUG = get_bool_env('DEBUG')
+DEBUG:bool = get_bool_env('DEBUG')
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
