@@ -34,7 +34,7 @@ class Migration(migrations.Migration):
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
-                ('rule_config', models.JSONField(blank=True, default=apps.events.models.get_default_rule_config, help_text='Configuration for scoring rules (e.g. winning_sets, etc.)')),
+                ('rule_config', models.JSONField(blank=True, default=None, help_text='Configuration for scoring rules (e.g. winning_sets, etc.)')),
                 ('event', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, related_name='match_config', to='events.event')),
                 ('template', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='event_configs', to='events.matchtemplate')),
             ],

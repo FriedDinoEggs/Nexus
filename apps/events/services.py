@@ -1,6 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.db import IntegrityError, transaction
+from django.db.models import Count
 
 from apps.teams.models import Team
 
@@ -19,6 +20,54 @@ User = get_user_model()
 
 
 class EventService:
+    @staticmethod
+    def find_matching_template(items_data: list[dict]) -> EventMatchTemplate | None:
+        """
+        Finds an existing template that matches exactly the given items_data.
+        Matching criteria:
+        1. Same number of items.
+        2. Each item must match number, format, and requirement.
+        """
+        count = len(items_data)
+        candidates = EventMatchTemplate.objects.annotate(num_items=Count('items')).filter(
+            num_items=count
+        )
+
+        sorted_input = sorted(items_data, key=lambda x: x['number'])
+
+        for tmpl in candidates:
+            tmpl_items = list(tmpl.items.all().order_by('number'))
+
+            match = True
+            for inp, db_item in zip(sorted_input, tmpl_items, strict=True):
+                if (
+                    inp['number'] != db_item.number
+                    or inp.get('format', 'S') != db_item.format
+                    or inp.get('requirement', '') != db_item.requirement
+                ):
+                    match = False
+                    break
+            if match:
+                return tmpl
+        return None
+
+    @staticmethod
+    @transaction.atomic
+    def get_or_create_match_template_from_items(
+        *, name_prefix: str, items_data: list[dict], creator: User | None = None
+    ) -> EventMatchTemplate:
+        """
+        Finds a matching template or creates a new one.
+        """
+        existing = EventService.find_matching_template(items_data)
+        if existing:
+            return existing
+
+        new_name = f'{name_prefix} Template'
+        return EventService.create_match_template(
+            name=new_name, items_data=items_data, creator=creator
+        )
+
     @staticmethod
     @transaction.atomic
     def create_match_template(
@@ -69,13 +118,24 @@ class EventService:
     @staticmethod
     @transaction.atomic
     def set_event_config(
-        event: Event, template: EventMatchTemplate, rule_config: dict = None
+        event: Event, template: EventMatchTemplate | None = None, rule_config: dict | None = None
     ) -> EventMatchConfiguration:
         if rule_config is None:
             rule_config = {}
 
+        defaults = {
+            'template': template,
+            'winning_sets': rule_config.get('winning_sets', 3),
+            'set_winning_points': rule_config.get('set_winning_points', 11),
+            'use_deuce': rule_config.get('use_deuce', True),
+            'team_winning_points': rule_config.get('team_winning_points', 3),
+            'play_all_sets': rule_config.get('play_all_sets', False),
+            'play_all_matches': rule_config.get('play_all_matches', False),
+            'count_points_by_sets': rule_config.get('count_points_by_sets', False),
+        }
+
         config, created = EventMatchConfiguration.objects.update_or_create(
-            event=event, defaults={'template': template, 'rule_config': rule_config}
+            event=event, defaults=defaults
         )
         return config
 

@@ -194,29 +194,37 @@ class EventMatchTemplateItem(PlayerMatchConfiguration, TimeStampedModel):
         return f'{self.template.name} - Match {self.number}'
 
 
-def get_default_rule_config():
-    return {
-        'winning_sets': 3,  # Number of sets to win a PlayerMatch
-        'set_winning_points': 11,  # Points needed to win a single set
-        'use_deuce': True,  # Whether to use deuce rule (must win by 2 points)
-        'team_winning_points': 3,  # Number of points (matches) to win a TeamMatch
-        'play_all_sets': False,  # Must play all sets, overrides winning_sets setting
-        'play_all_matches': False,  # Must play all matches, overrides team_winning_points setting
-        'count_points_by_sets': False,  # Whether to count set scores (e.g. 4ㄚ:2) or win/loss (1:0)
-    }
-
-
 class EventMatchConfiguration(TimeStampedModel):
     event = models.OneToOneField(Event, on_delete=models.CASCADE, related_name='match_config')
 
     template = models.ForeignKey(
-        EventMatchTemplate, on_delete=models.PROTECT, related_name='event_configs'
+        EventMatchTemplate,
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name='event_configs',
     )
 
-    rule_config = models.JSONField(
-        default=get_default_rule_config,
-        blank=True,
-        help_text='Configuration for scoring rules (e.g. winning_sets, etc.)',
+    winning_sets = models.PositiveSmallIntegerField(
+        default=3, help_text='Number of sets to win a PlayerMatch'
+    )
+    set_winning_points = models.PositiveSmallIntegerField(
+        default=11, help_text='Points needed to win a single set'
+    )
+    use_deuce = models.BooleanField(
+        default=True, help_text='Whether to use deuce rule (must win by 2 points)'
+    )
+    team_winning_points = models.PositiveSmallIntegerField(
+        default=3, help_text='Number of points (matches) to win a TeamMatch'
+    )
+    play_all_sets = models.BooleanField(
+        default=False, help_text='Must play all sets, overrides winning_sets setting'
+    )
+    play_all_matches = models.BooleanField(
+        default=False, help_text='Must play all matches, overrides team_winning_points setting'
+    )
+    count_points_by_sets = models.BooleanField(
+        default=False, help_text='Whether to count set scores (e.g. 4:2) or win/loss (1:0)'
     )
 
     class Meta:
@@ -224,3 +232,18 @@ class EventMatchConfiguration(TimeStampedModel):
 
     def __str__(self):
         return f'Config for {self.event.name} using {self.template.name}'
+
+    @property
+    def rule_config(self):
+        """
+        Returns the rule configuration as a dictionary for backward compatibility.
+        """
+        return {
+            'winning_sets': self.winning_sets,
+            'set_winning_points': self.set_winning_points,
+            'use_deuce': self.use_deuce,
+            'team_winning_points': self.team_winning_points,
+            'play_all_sets': self.play_all_sets,
+            'play_all_matches': self.play_all_matches,
+            'count_points_by_sets': self.count_points_by_sets,
+        }
