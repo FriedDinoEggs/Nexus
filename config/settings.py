@@ -247,6 +247,12 @@ SITE_BASEURL = 'localhost:8000'
 
 GOOGLE_WEB_CLIENT_ID = os.getenv('GOOGLE_OAUTH_CLIENT_ID')
 GOOGLE_OAUTH_SECRET_FILE_PATH = os.getenv('GOOGLE_OAUTH_SCRECT_FILE_PATH')
+if DEBUG:
+    TEMPLATES[0]['DIRS'] += [BASE_DIR / "frontend" / "dist" / "test-google-login"]
+
+    if 'STATICFILES_DIRS' not in locals():
+        STATICFILES_DIRS = []
+    STATICFILES_DIRS += [BASE_DIR / "frontend" / "dist" / "test-google-login"]
 
 if os.getenv('CI'):
     CACHES = {
