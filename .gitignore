@@ -1,0 +1,6 @@
+.env
+**/__pycache__
+.vscode
+**/logs/
+**/screct/
+package-lock.json

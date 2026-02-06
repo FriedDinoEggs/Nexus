@@ -1,0 +1,1706 @@
+openapi: 3.0.3
+info:
+  title: Nexus Project API
+  version: 0.0.1
+  description: 龍濱會員賽事系統
+paths:
+  /api/v1/event-teams/:
+    get:
+      operationId: v1_event_teams_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - v1
+      - Event Teams
+      security:
+      - JwtAuth: []
+      - jwt_auth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedEventTeamList'
+          description: ''
+    post:
+      operationId: v1_event_teams_create
+      tags:
+      - v1
+      - Event Teams
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventTeamRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/EventTeamRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/EventTeamRequest'
+        required: true
+      security:
+      - JwtAuth: []
+      - jwt_auth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventTeam'
+          description: ''
+  /api/v1/event-teams/{event_team_id}/members/:
+    get:
+      operationId: v1_event_teams_members_list
+      parameters:
+      - in: path
+        name: event_team_id
+        schema:
+          type: integer
+        required: true
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - v1
+      security:
+      - JwtAuth: []
+      - jwt_auth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedEventTeamMemberList'
+          description: ''
+    post:
+      operationId: v1_event_teams_members_create
+      parameters:
+      - in: path
+        name: event_team_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventTeamMemberRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/EventTeamMemberRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/EventTeamMemberRequest'
+        required: true
+      security:
+      - JwtAuth: []
+      - jwt_auth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventTeamMember'
+          description: ''
+  /api/v1/event-teams/{event_team_id}/members/{id}/:
+    get:
+      operationId: v1_event_teams_members_retrieve
+      parameters:
+      - in: path
+        name: event_team_id
+        schema:
+          type: integer
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this event team member.
+        required: true
+      tags:
+      - v1
+      security:
+      - JwtAuth: []
+      - jwt_auth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventTeamMember'
+          description: ''
+    put:
+      operationId: v1_event_teams_members_update
+      parameters:
+      - in: path
+        name: event_team_id
+        schema:
+          type: integer
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this event team member.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventTeamMemberRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/EventTeamMemberRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/EventTeamMemberRequest'
+        required: true
+      security:
+      - JwtAuth: []
+      - jwt_auth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventTeamMember'
+          description: ''
+    patch:
+      operationId: v1_event_teams_members_partial_update
+      parameters:
+      - in: path
+        name: event_team_id
+        schema:
+          type: integer
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this event team member.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedEventTeamMemberRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedEventTeamMemberRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedEventTeamMemberRequest'
+      security:
+      - JwtAuth: []
+      - jwt_auth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventTeamMember'
+          description: ''
+    delete:
+      operationId: v1_event_teams_members_destroy
+      parameters:
+      - in: path
+        name: event_team_id
+        schema:
+          type: integer
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this event team member.
+        required: true
+      tags:
+      - v1
+      security:
+      - JwtAuth: []
+      - jwt_auth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/event-teams/{id}/:
+    get:
+      operationId: v1_event_teams_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this event team.
+        required: true
+      - in: path
+        name: pk
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      - Event Teams
+      security:
+      - JwtAuth: []
+      - jwt_auth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventTeam'
+          description: ''
+    put:
+      operationId: v1_event_teams_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this event team.
+        required: true
+      - in: path
+        name: pk
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      - Event Teams
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventTeamRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/EventTeamRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/EventTeamRequest'
+        required: true
+      security:
+      - JwtAuth: []
+      - jwt_auth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventTeam'
+          description: ''
+    patch:
+      operationId: v1_event_teams_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this event team.
+        required: true
+      - in: path
+        name: pk
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      - Event Teams
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedEventTeamRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedEventTeamRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedEventTeamRequest'
+      security:
+      - JwtAuth: []
+      - jwt_auth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventTeam'
+          description: ''
+    delete:
+      operationId: v1_event_teams_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this event team.
+        required: true
+      - in: path
+        name: pk
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      - Event Teams
+      security:
+      - JwtAuth: []
+      - jwt_auth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/event-teams/me/:
+    get:
+      operationId: v1_event_teams_me_retrieve
+      tags:
+      - v1
+      - Event Teams
+      security:
+      - JwtAuth: []
+      - jwt_auth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventTeam'
+          description: ''
+  /api/v1/events/:
+    get:
+      operationId: v1_events_list
+      description: Authenticated users can list all events.
+      summary: List all events
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - v1
+      - Events
+      security:
+      - JwtAuth: []
+      - jwt_auth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedEventList'
+          description: ''
+    post:
+      operationId: v1_events_create
+      description: '**Requires: Event Manager or Super Admin group.**'
+      summary: Create a new event
+      tags:
+      - v1
+      - Events
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/EventRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/EventRequest'
+        required: true
+      security:
+      - JwtAuth: []
+      - jwt_auth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Event'
+          description: ''
+  /api/v1/events/{event_id}/teams/:
+    get:
+      operationId: v1_events_teams_list
+      parameters:
+      - in: path
+        name: event_id
+        schema:
+          type: integer
+        required: true
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - v1
+      - Event Teams
+      security:
+      - JwtAuth: []
+      - jwt_auth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedEventTeamList'
+          description: ''
+    post:
+      operationId: v1_events_teams_create
+      parameters:
+      - in: path
+        name: event_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      - Event Teams
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventTeamRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/EventTeamRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/EventTeamRequest'
+        required: true
+      security:
+      - JwtAuth: []
+      - jwt_auth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventTeam'
+          description: ''
+  /api/v1/events/{event_id}/teams/{id}/:
+    get:
+      operationId: v1_events_teams_retrieve
+      parameters:
+      - in: path
+        name: event_id
+        schema:
+          type: integer
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this event team.
+        required: true
+      - in: path
+        name: pk
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      - Event Teams
+      security:
+      - JwtAuth: []
+      - jwt_auth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventTeam'
+          description: ''
+    put:
+      operationId: v1_events_teams_update
+      parameters:
+      - in: path
+        name: event_id
+        schema:
+          type: integer
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this event team.
+        required: true
+      - in: path
+        name: pk
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      - Event Teams
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventTeamRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/EventTeamRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/EventTeamRequest'
+        required: true
+      security:
+      - JwtAuth: []
+      - jwt_auth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventTeam'
+          description: ''
+    patch:
+      operationId: v1_events_teams_partial_update
+      parameters:
+      - in: path
+        name: event_id
+        schema:
+          type: integer
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this event team.
+        required: true
+      - in: path
+        name: pk
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      - Event Teams
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedEventTeamRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedEventTeamRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedEventTeamRequest'
+      security:
+      - JwtAuth: []
+      - jwt_auth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventTeam'
+          description: ''
+    delete:
+      operationId: v1_events_teams_destroy
+      parameters:
+      - in: path
+        name: event_id
+        schema:
+          type: integer
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this event team.
+        required: true
+      - in: path
+        name: pk
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      - Event Teams
+      security:
+      - JwtAuth: []
+      - jwt_auth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/events/{event_id}/teams/me/:
+    get:
+      operationId: v1_events_teams_me_retrieve
+      parameters:
+      - in: path
+        name: event_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      - Event Teams
+      security:
+      - JwtAuth: []
+      - jwt_auth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventTeam'
+          description: ''
+  /api/v1/events/{id}/:
+    get:
+      operationId: v1_events_retrieve
+      description: Authenticated users can view event details.
+      summary: Get event details
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this event.
+        required: true
+      - in: path
+        name: pk
+        schema:
+          type: integer
+        description: Event ID
+        required: true
+      tags:
+      - v1
+      - Events
+      security:
+      - JwtAuth: []
+      - jwt_auth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Event'
+          description: ''
+    put:
+      operationId: v1_events_update
+      description: '**Requires: Event Manager or Super Admin group.**'
+      summary: Update an event
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this event.
+        required: true
+      - in: path
+        name: pk
+        schema:
+          type: integer
+        description: Event ID
+        required: true
+      tags:
+      - v1
+      - Events
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/EventRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/EventRequest'
+        required: true
+      security:
+      - JwtAuth: []
+      - jwt_auth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Event'
+          description: ''
+    patch:
+      operationId: v1_events_partial_update
+      description: '**Requires: Event Manager or Super Admin group.**'
+      summary: Partially update an event
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this event.
+        required: true
+      - in: path
+        name: pk
+        schema:
+          type: integer
+        description: Event ID
+        required: true
+      tags:
+      - v1
+      - Events
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedEventRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedEventRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedEventRequest'
+      security:
+      - JwtAuth: []
+      - jwt_auth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Event'
+          description: ''
+    delete:
+      operationId: v1_events_destroy
+      description: '**Requires: Event Manager or Super Admin group.**'
+      summary: Delete an event
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this event.
+        required: true
+      - in: path
+        name: pk
+        schema:
+          type: integer
+        description: Event ID
+        required: true
+      tags:
+      - v1
+      - Events
+      security:
+      - JwtAuth: []
+      - jwt_auth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/users/:
+    get:
+      operationId: v1_users_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - v1
+      - Users
+      security:
+      - JwtAuth: []
+      - jwt_auth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedUserProfileList'
+          description: ''
+    post:
+      operationId: v1_users_create
+      tags:
+      - v1
+      - Users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserProfileRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UserProfileRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UserProfileRequest'
+        required: true
+      security:
+      - JwtAuth: []
+      - jwt_auth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+          description: ''
+  /api/v1/users/{id}/:
+    get:
+      operationId: v1_users_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this user.
+        required: true
+      tags:
+      - v1
+      - Users
+      security:
+      - JwtAuth: []
+      - jwt_auth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+          description: ''
+    put:
+      operationId: v1_users_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this user.
+        required: true
+      tags:
+      - v1
+      - Users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserProfileRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UserProfileRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UserProfileRequest'
+        required: true
+      security:
+      - JwtAuth: []
+      - jwt_auth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+          description: ''
+    patch:
+      operationId: v1_users_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this user.
+        required: true
+      tags:
+      - v1
+      - Users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedUserProfileRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedUserProfileRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedUserProfileRequest'
+      security:
+      - JwtAuth: []
+      - jwt_auth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+          description: ''
+    delete:
+      operationId: v1_users_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this user.
+        required: true
+      tags:
+      - v1
+      - Users
+      security:
+      - JwtAuth: []
+      - jwt_auth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/users/login/:
+    post:
+      operationId: v1_users_login_create
+      description: |-
+        Takes a set of user credentials and returns an access and refresh JSON web
+        token pair to prove the authentication of those credentials.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MyTokenObtainPairRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MyTokenObtainPairRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MyTokenObtainPairRequest'
+        required: true
+      security:
+      - jwt_auth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/users/logout/:
+    post:
+      operationId: v1_users_logout_create
+      description: |-
+        Takes a token and blacklists it. Must be used with the
+        `rest_framework_simplejwt.token_blacklist` app installed.
+      tags:
+      - v1
+      - Users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenBlacklistRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TokenBlacklistRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TokenBlacklistRequest'
+        required: true
+      security:
+      - JwtAuth: []
+      - jwt_auth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/users/me/:
+    get:
+      operationId: v1_users_me_retrieve
+      tags:
+      - v1
+      - Users
+      security:
+      - JwtAuth: []
+      - jwt_auth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+          description: ''
+  /api/v1/users/refresh/:
+    post:
+      operationId: v1_users_refresh_create
+      description: |-
+        Takes a refresh type JSON web token and returns an access type JSON web
+        token if the refresh token is valid.
+      tags:
+      - v1
+      - Users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MyToeknRefreshRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MyToeknRefreshRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MyToeknRefreshRequest'
+        required: true
+      security:
+      - jwt_auth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MyToeknRefresh'
+          description: ''
+  /api/v1/users/register/:
+    post:
+      operationId: v1_users_register_create
+      tags:
+      - v1
+      - Users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserRegistrationRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UserRegistrationRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UserRegistrationRequest'
+        required: true
+      security:
+      - JwtAuth: []
+      - jwt_auth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserRegistration'
+          description: ''
+components:
+  schemas:
+    Event:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          title: Event name
+          maxLength: 128
+        start_time:
+          type: string
+          format: date-time
+          nullable: true
+        end_time:
+          type: string
+          format: date-time
+          nullable: true
+        type:
+          allOf:
+          - $ref: '#/components/schemas/TypeEnum'
+          title: Event Type
+        location:
+          type: integer
+          nullable: true
+        location_name:
+          type: string
+          description: Enter the location name (e.g., Banqiao Station)
+          readOnly: true
+        event_teams:
+          type: array
+          items:
+            $ref: '#/components/schemas/EventTeam'
+          readOnly: true
+        lunch_options:
+          type: array
+          items:
+            $ref: '#/components/schemas/LunchOption'
+          readOnly: true
+      required:
+      - event_teams
+      - id
+      - location_name
+      - lunch_options
+      - name
+    EventRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          title: Event name
+          maxLength: 128
+        start_time:
+          type: string
+          format: date-time
+          nullable: true
+        end_time:
+          type: string
+          format: date-time
+          nullable: true
+        type:
+          allOf:
+          - $ref: '#/components/schemas/TypeEnum'
+          title: Event Type
+        location:
+          type: integer
+          nullable: true
+        lunch_options_names:
+          type: array
+          items:
+            type: string
+            minLength: 1
+          writeOnly: true
+      required:
+      - name
+    EventTeam:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        event:
+          type: integer
+        event_name:
+          type: string
+          title: Event name
+          readOnly: true
+        team:
+          type: integer
+        team_name:
+          type: string
+          readOnly: true
+        status:
+          $ref: '#/components/schemas/StatusEnum'
+        coach:
+          type: integer
+          nullable: true
+        leader:
+          type: integer
+          nullable: true
+      required:
+      - event
+      - event_name
+      - id
+      - team
+      - team_name
+    EventTeamMember:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        event_team:
+          type: integer
+        user:
+          type: integer
+          readOnly: true
+        user_full_name:
+          type: string
+          readOnly: true
+        event_name:
+          type: string
+          title: Event name
+          readOnly: true
+        team_name:
+          type: string
+          readOnly: true
+        is_player:
+          type: boolean
+        is_coach:
+          type: boolean
+        is_staff:
+          type: boolean
+        lunch_orders:
+          type: array
+          items:
+            $ref: '#/components/schemas/RegistrationLunchOrder'
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - event_name
+      - event_team
+      - id
+      - team_name
+      - user
+      - user_full_name
+    EventTeamMemberRequest:
+      type: object
+      properties:
+        event_team:
+          type: integer
+        is_player:
+          type: boolean
+        is_coach:
+          type: boolean
+        is_staff:
+          type: boolean
+        lunch_orders:
+          type: array
+          items:
+            $ref: '#/components/schemas/RegistrationLunchOrderRequest'
+      required:
+      - event_team
+    EventTeamRequest:
+      type: object
+      properties:
+        event:
+          type: integer
+        team:
+          type: integer
+        status:
+          $ref: '#/components/schemas/StatusEnum'
+        coach:
+          type: integer
+          nullable: true
+        leader:
+          type: integer
+          nullable: true
+      required:
+      - event
+      - team
+    LunchOption:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        event:
+          type: integer
+        name:
+          type: string
+          maxLength: 64
+        price:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+      required:
+      - event
+      - id
+      - name
+    LunchOptionRequest:
+      type: object
+      properties:
+        event:
+          type: integer
+        name:
+          type: string
+          minLength: 1
+          maxLength: 64
+        price:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+      required:
+      - event
+      - name
+    MyToeknRefresh:
+      type: object
+      properties:
+        refresh:
+          type: string
+        access:
+          type: string
+          readOnly: true
+      required:
+      - access
+      - refresh
+    MyToeknRefreshRequest:
+      type: object
+      properties:
+        refresh:
+          type: string
+          minLength: 1
+      required:
+      - refresh
+    MyTokenObtainPairRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          writeOnly: true
+          minLength: 1
+        password:
+          type: string
+          writeOnly: true
+          minLength: 1
+      required:
+      - email
+      - password
+    PaginatedEventList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Event'
+    PaginatedEventTeamList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/EventTeam'
+    PaginatedEventTeamMemberList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/EventTeamMember'
+    PaginatedUserProfileList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserProfile'
+    PatchedEventRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          title: Event name
+          maxLength: 128
+        start_time:
+          type: string
+          format: date-time
+          nullable: true
+        end_time:
+          type: string
+          format: date-time
+          nullable: true
+        type:
+          allOf:
+          - $ref: '#/components/schemas/TypeEnum'
+          title: Event Type
+        location:
+          type: integer
+          nullable: true
+        lunch_options_names:
+          type: array
+          items:
+            type: string
+            minLength: 1
+          writeOnly: true
+    PatchedEventTeamMemberRequest:
+      type: object
+      properties:
+        event_team:
+          type: integer
+        is_player:
+          type: boolean
+        is_coach:
+          type: boolean
+        is_staff:
+          type: boolean
+        lunch_orders:
+          type: array
+          items:
+            $ref: '#/components/schemas/RegistrationLunchOrderRequest'
+    PatchedEventTeamRequest:
+      type: object
+      properties:
+        event:
+          type: integer
+        team:
+          type: integer
+        status:
+          $ref: '#/components/schemas/StatusEnum'
+        coach:
+          type: integer
+          nullable: true
+        leader:
+          type: integer
+          nullable: true
+    PatchedUserProfileRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 1
+          maxLength: 254
+        password:
+          type: string
+          writeOnly: true
+          minLength: 8
+          maxLength: 128
+        full_name:
+          type: string
+          default: ''
+          maxLength: 150
+        date_of_birth:
+          type: string
+          format: date
+          nullable: true
+        avatar:
+          type: string
+          format: binary
+          nullable: true
+    RegistrationLunchOrder:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        option:
+          type: integer
+        option_name:
+          type: string
+          readOnly: true
+        quantity:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        note:
+          type: string
+      required:
+      - id
+      - option
+      - option_name
+    RegistrationLunchOrderRequest:
+      type: object
+      properties:
+        option:
+          type: integer
+        quantity:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        note:
+          type: string
+      required:
+      - option
+    StatusEnum:
+      enum:
+      - PD
+      - AP
+      - RJ
+      type: string
+      description: |-
+        * `PD` - Pending
+        * `AP` - Approved
+        * `RJ` - Rejected
+    TokenBlacklistRequest:
+      type: object
+      properties:
+        refresh:
+          type: string
+          writeOnly: true
+          minLength: 1
+      required:
+      - refresh
+    TypeEnum:
+      enum:
+      - TN
+      - LG
+      - FR
+      type: string
+      description: |-
+        * `TN` - Tournament
+        * `LG` - League
+        * `FR` - Friendly
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        full_name:
+          type: string
+          default: ''
+          maxLength: 150
+        date_of_birth:
+          type: string
+          format: date
+          nullable: true
+        avatar:
+          type: string
+          format: uri
+          nullable: true
+      required:
+      - email
+      - id
+    UserProfileRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 1
+          maxLength: 254
+        password:
+          type: string
+          writeOnly: true
+          minLength: 8
+          maxLength: 128
+        full_name:
+          type: string
+          default: ''
+          maxLength: 150
+        date_of_birth:
+          type: string
+          format: date
+          nullable: true
+        avatar:
+          type: string
+          format: binary
+          nullable: true
+      required:
+      - email
+      - password
+    UserRegistration:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        full_name:
+          type: string
+          default: ''
+          maxLength: 150
+        date_of_birth:
+          type: string
+          format: date
+          nullable: true
+        avatar:
+          type: string
+          format: uri
+          nullable: true
+      required:
+      - email
+    UserRegistrationRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 1
+          maxLength: 254
+        password:
+          type: string
+          writeOnly: true
+          minLength: 1
+          maxLength: 128
+        password_confirm:
+          type: string
+          writeOnly: true
+          minLength: 1
+        full_name:
+          type: string
+          default: ''
+          maxLength: 150
+        date_of_birth:
+          type: string
+          format: date
+          nullable: true
+        avatar:
+          type: string
+          format: binary
+          nullable: true
+      required:
+      - email
+      - password
+      - password_confirm
+  securitySchemes:
+    JwtAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    jwt_auth:
+      type: oauth2
+      description: 輸入帳密登入取得 Token
+      flows:
+        password:
+          tokenUrl: /api/v1/users/login/
+          scopes: {}

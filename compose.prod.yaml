@@ -1,0 +1,121 @@
+x-django-template: &django-base
+  build:
+    context: .
+    dockerfile: Dockerfile.api
+    args:
+      - GIT_TAG=${GIT_TAG:-latest}
+  image: api-image:${GIT_TAG:-latest}
+  environment:
+    - NEXUS_DB_HOST=pg_db_prod
+    - NEXUS_DB_PORT=5432
+    - REDIS_LOCATION=redis://redis_prod:6379/1
+    - DEBUG=False
+  depends_on:
+    postgres:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+  sysctls:
+    - net.core.somaxconn=4096
+  ulimits:
+    nproc: 1024
+    nofile:
+      soft: 65535
+      hard: 65535
+
+services:
+  postgres:
+    image: postgres:18
+    container_name: pg_db_prod
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${NEXUS_DB_NAME:?error}
+      POSTGRES_USER: ${NEXUS_DB_USER:?error}
+      POSTGRES_PASSWORD: ${NEXUS_DB_PWD:?error}
+      PGDATA: /var/lib/postgresql/data
+    command: >
+      postgres
+        -c shared_buffers=128MB
+        -c max_connections=32
+        -c work_mem=8MB
+        -c maintenance_work_mem=32MB
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    ports:
+      - "5434:5432"
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 128M
+    sysctls:
+      - net.core.somaxconn=4096
+    ulimits:
+      nofile:
+        soft: 65535
+        hard: 65535
+
+  redis:
+    image: redis:8-alpine
+    container_name: redis_prod
+    restart: unless-stopped
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_data:/data
+    command: >
+      redis-server
+        --protected-mode yes
+        --requirepass ${REDIS_PASSWORD:?error}
+        --appendonly yes
+        --appendfsync everysec
+        --maxmemory 128mb
+        --maxmemory-policy allkeys-lru
+        --bind 0.0.0.0
+        --save 900 1
+        --save 300 10
+        --save 60 10000
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 64M
+
+  django_engine1:
+    <<: *django-base
+    container_name: django_engine1
+    ports:
+      - "8001:8000"
+
+  django_engine2:
+    <<: *django-base
+    container_name: django_engine2
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      django_engine1:
+        condition: service_started
+    ports:
+      - "8002:8000"
+
+volumes:
+  pg_data:
+    name: pg_data_${ENV}
+
+  redis_data:
+    name: redis_data_${ENV}
