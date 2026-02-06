@@ -13,7 +13,7 @@ class MailServices:
 
     @staticmethod
     def send_verify_mail(verification_url: str, to: str):
-        services = MailServices._get_provider('mailtrapsandbox')
+        services = MailServices._get_provider()
         message = VerificationMail.get_message(url=verification_url)
 
         services.send(
@@ -26,7 +26,7 @@ class MailServices:
 
     @staticmethod
     def send_welcome_mail(to: str):
-        services = MailServices._get_provider('mailtrapsandbox')
+        services = MailServices._get_provider()
         message = WelcomeMail.get_message()
 
         services.send(
@@ -39,7 +39,7 @@ class MailServices:
 
     @staticmethod
     def send_reset_password_mail(code: str, to: str):
-        services = MailServices._get_provider('mailtrapsandbox')
+        services = MailServices._get_provider()
         message = ResetPasswordMail.get_message(code=code)
 
         services.send(
@@ -51,7 +51,9 @@ class MailServices:
         )
 
     @classmethod
-    def _get_provider(cls, provider: str) -> MailProvider:
+    def _get_provider(cls, provider: str = 'mailtrapsandbox') -> MailProvider:
+        if settings.DEBUG is not True:
+            provider = 'mailtrap'
         target_class = cls._providers.get(provider)
         if not target_class:
             raise ValueError(f'unsupported mail provider: {provider}')

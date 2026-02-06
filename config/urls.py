@@ -17,7 +17,10 @@ Including another URLconf
 
 from django.contrib import admin
 from django.urls import include, path
+from django.views.generic import TemplateView
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
+
+from config import settings
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -45,3 +48,18 @@ urlpatterns = [
         name='swagger-ui',
     ),
 ]
+
+
+if settings.DEBUG:
+
+    class GoogleLoginView(TemplateView):
+        template_name = 'google_index.html'
+
+        def dispatch(self, request, *args, **kwargs):
+            response = super().dispatch(request, *args, **kwargs)
+            response['Cross-Origin-Opener-Policy'] = 'same-origin-allow-popups'
+            return response
+
+    urlpatterns += [
+        path('test-google-login/', GoogleLoginView.as_view()),
+    ]
