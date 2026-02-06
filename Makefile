@@ -1,6 +1,8 @@
-.PHONY: help install migrate test lint run create_test_user set_groups up down run_granian
+.PHONY: help install migrate test lint run create_test_user set_groups up down run_granian ci-test dk_up_prod dk_down_prod
 
 MANAGE := uv run manage.py
+
+include docker.mk
 
 install:
 	uv sync && uv run pre-commit install
@@ -46,14 +48,19 @@ lint-fix:
 	uv run ruff check --fix .
 	@echo " Auto-fixed issues!"
 
+test:
+	$(MANAGE) test 
+
+ci-test: lint format 
+
 up:
 	docker compose -f ./compose.yaml -p nexus-test up -d --build
 
 down:
 	docker compose -p nexus-test down -t 10
 
-test:
-	$(MANAGE) test 
+dk_up_prod:
+	make dk-up ENV=prod
 
-ci-test: lint format 
-
+dk_down_prod:
+	make dk-down ENV=prod

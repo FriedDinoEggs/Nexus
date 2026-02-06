@@ -11,7 +11,7 @@ services:
     command: >
       postgres
         -c shared_buffers=128MB
-        -c max_connections=20
+        -c max_connections=32
         -c work_mem=8MB
         -c maintenance_work_mem=32MB
     volumes:
@@ -92,6 +92,7 @@ services:
       - NEXUS_DB_HOST=nexus_pg_db
       - NEXUS_DB_PORT=5432
       - REDIS_LOCATION=redis://nexus_redis:6379/1
+      - DEBUG=True
     depends_on:
       - postgres
       - redis
