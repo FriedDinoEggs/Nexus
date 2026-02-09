@@ -35,6 +35,7 @@ urlpatterns = [
                     path(
                         '', include(('apps.matches.urls', 'matches_app'), namespace='matches_app')
                     ),
+                    path('', include(('apps.core.urls', 'core_app'), namespace='core_app')),
                 ],
                 'v1',
             ),
