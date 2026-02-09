@@ -171,8 +171,11 @@ class MailTrapSandboxProvider(MailProvider):
             html=slave_html,
             category=slave_category,
         )
-        response = client.send(mail)
-        logger.info(f'[MailTrapSandbox] Send response: {response}')
+        try:
+            response = client.send(mail)
+            logger.info(f'[MailTrapSandbox] Send response: {response}')
+        except mt.MailtrapError as e:
+            logger.error(f'[MailTrapSandbox] MailtrapError: {e}')
 
 
 @MailServices.register('mailtrap')
@@ -200,5 +203,8 @@ class MailTrapProvider(MailProvider):
             html=slave_html,
             category=slave_category,
         )
-        response = client.send(mail)
-        logger.info(f'[MailTrap] Send response: {response}')
+        try:
+            response = client.send(mail)
+            logger.info(f'[MailTrap] Send response: {response}')
+        except mt.MailtrapError as e:
+            logger.error(f'[MailTrap] MailtrapError: {e}')
