@@ -32,6 +32,7 @@ class UserVerificationServices:
 
     @classmethod
     def send_verification_mail(cls, *, user, base_url: str) -> None:
+        logger.info(f'sned verification mail. DEBUG={settings.DEBUG}')
         if not isinstance(user, User):
             logger.warning('send_verification_mail: user is not django User isinstance')
             raise TypeError(f'user must be django user istance, got {type(user)}')
