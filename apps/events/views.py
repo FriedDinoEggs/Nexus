@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from drf_spectacular.utils import extend_schema
 from rest_framework import permissions, serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.views import Response
@@ -23,6 +24,7 @@ from .services import EventService
 User = get_user_model()
 
 
+@extend_schema(tags=['v1', 'Events'])
 class MatchTemplateViewSet(viewsets.ModelViewSet):
     queryset = EventMatchTemplate.objects.all().prefetch_related('items')
 
@@ -39,6 +41,7 @@ class MatchTemplateViewSet(viewsets.ModelViewSet):
         return super().get_permissions()
 
 
+@extend_schema(tags=['v1', 'Events'])
 class EventViewSet(viewsets.ModelViewSet):
     queryset = (
         Event.objects.all()
@@ -56,6 +59,7 @@ class EventViewSet(viewsets.ModelViewSet):
         return super().get_permissions()
 
 
+@extend_schema(tags=['v1', 'Events'])
 class LunchOptionsViewSet(viewsets.ModelViewSet):
     queryset = LunchOption.objects.all().select_related('event')
     serializer_class = LunchOptionSerializer
@@ -92,6 +96,7 @@ class LunchOptionsViewSet(viewsets.ModelViewSet):
             serializer.save()
 
 
+@extend_schema(tags=['v1', 'Events'])
 class EventTeamViewSet(viewsets.ModelViewSet):
     queryset = EventTeam.objects.all().select_related('event', 'team', 'coach', 'leader')
     serializer_class = EventTeamSerializer
@@ -149,6 +154,7 @@ class EventTeamViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
+@extend_schema(tags=['v1', 'Events'])
 class EventTeamMemberViewSet(viewsets.ModelViewSet):
     queryset = (
         EventTeamMember.objects.all()

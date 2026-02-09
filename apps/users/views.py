@@ -127,6 +127,7 @@ class UserProfileViewSet(viewsets.ModelViewSet):
         instance.save()
 
 
+@extend_schema(tags=['v1', 'Users'])
 class UserVerificationViewSet(viewsets.GenericViewSet):
     authentication_classes = [CustomJWTAuthentication]
     permission_classes = [IsAuthenticated]
@@ -193,6 +194,7 @@ class UserVerificationViewSet(viewsets.GenericViewSet):
         return Response(status=status.HTTP_400_BAD_REQUEST)
 
 
+@extend_schema(tags=['v1', 'Users'])
 class UserResetPasswordViewSet(viewsets.GenericViewSet):
     permission_classes = [AllowAny]
     serializer_class = UserPasswordResetSerializer
@@ -263,7 +265,7 @@ class GoogleLoginViewSet(viewsets.GenericViewSet):
         )
 
 
-@extend_schema(tags=['v1', 'users'])
+@extend_schema(tags=['v1', 'Users'])
 class CustomJWTLogoutView(TokenBlacklistView):
     permission_classes = [IsAuthenticated]
     authentication_classes = [CustomJWTAuthentication]
