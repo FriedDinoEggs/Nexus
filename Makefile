@@ -8,6 +8,7 @@ install:
 	uv sync && uv run pre-commit install
 
 makemigrations:
+	mkdir -p logs
 	$(MANAGE) makemigrations
 
 migrate:
@@ -30,9 +31,6 @@ run_celery:
 
 setup: install makemigrations migrate set_groups create_test_user 
 	@echo "開發環境設定完成!!!"
-
-setup_prod: install makemigrations migrate set_groups
-	@echo "The production enviorment has been set up!!!"
 
 format:
 	uv run ruff format .
@@ -64,3 +62,7 @@ dk_up_prod:
 
 dk_down_prod:
 	make dk-down ENV=prod
+
+setup_prod: install makemigrations migrate set_groups
+	@echo "The production enviorment has been set up!!!"
+	uv run manage.py createsuperuser
