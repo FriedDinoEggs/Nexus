@@ -1,9 +1,9 @@
 import logging
 from abc import ABC, abstractmethod
-from textwrap import dedent
 
 import mailtrap as mt
 from django.conf import settings
+from django.template.loader import render_to_string
 
 logger = logging.getLogger(__name__)
 
@@ -82,148 +82,54 @@ class MailMessage(ABC):
     def _get_subject() -> str:
         pass
 
-    @staticmethod
-    @abstractmethod
-    def _get_body(*args, **kwargs) -> str:
-        pass
+    @classmethod
+    def _get_body(cls, **kwargs) -> str:
+        return render_to_string(f'{cls.template_name}.txt', kwargs)
 
-    @staticmethod
-    @abstractmethod
-    def _get_html_context(*args, **kwargs) -> str:
-        pass
+    @classmethod
+    def _get_html_context(cls, **kwargs) -> str:
+        return render_to_string(f'{cls.template_name}.html', kwargs)
+
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        if not getattr(cls, 'template_name', None):
+            raise TypeError(f'Class {cls.__name__} must define "template_name"')
 
 
 class VerificationMail(MailMessage):
+    template_name = 'emails/verification_email'
+
     @staticmethod
     def _get_subject():
         return '[信箱認證] 請認證email帳號'
 
-    @staticmethod
-    def _get_body(url: str, **kwargs) -> str:
+    @classmethod
+    def _get_body(cls, url: str, **kwargs) -> str:
         if not url:
             raise ValueError('Missing url parameter')
+        return super()._get_body(url=url, **kwargs)
 
-        return f"""
-        會員帳號信箱認證
-
-        您好：
-        請於 60 分鐘內請點擊認證信箱連結
-        {url}
-        若非本人操作，請忽略此信。
-        """
-
-    @staticmethod
-    def _get_html_context(url: str, **kwargs):
+    @classmethod
+    def _get_html_context(cls, url: str, **kwargs):
         if not url:
             raise ValueError('Missing url parameter')
-
-        text = f"""
-        <html>
-            <body>
-                <h2 style="color: #333;">會員帳號信箱認證</h2>
-                <p>您的認證連結如下：</p>
-                <div style="background: #f4f4f4; padding: 20px; font-size: 24px;
-                font-weight: bold; color: #007bff;">
-                <a href="{url}" target="_blank">請點此進行認證</a>
-                </div>
-                <p>請於 60 分鐘內進行驗證</p>
-                <hr>
-                <p style="font-size: 12px; color: #888;">若您未曾申請此帳號，請忽略此信。</p>
-            </body>
-        </html>
-        """
-
-        return text
+        return super()._get_html_context(url=url, **kwargs)
 
 
 class WelcomeMail(MailMessage):
+    template_name = 'emails/welcome_email'
+
     @staticmethod
     def _get_subject():
         return '[信箱認證] 認證成功 哇嗚'
 
-    @staticmethod
-    def _get_body(**kwargs):
-        return """
-        您好：
-        會員信箱已驗證成功，現在您可以正常使用通知服務。
-        """
-
-    @staticmethod
-    def _get_html_context(**kwargs) -> str:
-        success_text = """
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="UTF-8">
-        </head>
-        <body style="margin: 0; padding: 0; font-family: 'Microsoft JhengHei', Arial, sans-serif;
-        background-color: #ffffff;">
-            <div style="max-width: 500px; margin: 40px auto;
-            text-align: center; border: 1px solid #e0e0e0;
-            border-radius: 10px; padding: 30px;">
-                <h2 style="color: #28a745; font-size: 24px; margin-bottom: 20px;">
-                    電子信箱認證成功
-                </h2>
-                <p style="color: #333333; font-size: 16px; line-height: 1.5;">
-                    您的帳號已完成驗證，現在您可以正常使用網站服務。
-                </p>
-                <hr style="border: 0; border-top: 1px solid #f0f0f0; margin: 30px 0;">
-                <p style="color: #888888; font-size: 13px;">
-                    感謝您的配合。
-                </p>
-            </div>
-        </body>
-        </html>
-        """
-
-        return success_text
-
 
 class ResetPasswordMail(MailMessage):
+    template_name = 'emails/reset_password_email'
+
     @staticmethod
     def _get_subject():
         return '[密碼重設] 請接收重設驗證碼'
-
-    @staticmethod
-    def _get_body(code: str, **kwargs):
-        return dedent(f"""
-
-        親愛的用戶您好，
-
-        已重新啟用您的帳號認證流程，請您依照下述步驟完成重新認證並設定新密碼。
-
-        請複製以下驗證碼並設定新密碼：
-        {code}
-
-        若無法直接點擊連結，請將上方網址複製後貼到瀏覽器網址列開啟。
-
-        此驗證碼將在 15 分鐘後失效。如您未在時限內完成操作，請於系統中重新申請密碼設定連結。
-
-        若您並未申請重新設定密碼，請忽略此信件，並建議您留意帳號安全狀況。
-
-        感謝您的配合與使用。
-        """).strip()
-
-    @staticmethod
-    def _get_html_context(code: str, **kwargs):
-        return dedent(f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="UTF-8">
-        </head>
-        <body>
-            <div style="max-width: 500px; margin: 40px auto; padding: 30px;
-            border: 1px solid #e0e0e0; border-radius: 10px;">
-                <h2>帳號驗證</h2>
-                <p>請複製下方驗證碼完成驗證：</p>
-                <p style="font-size: 14px; color: #666;"> {code} </p>
-                <hr>
-                <p style="font-size: 13px; color: #888;"> 此驗證碼將在 15 分鐘後失效。</p>
-            </div>
-        </body>
-        </html>
-        """).strip()
 
 
 class MailProvider(ABC):

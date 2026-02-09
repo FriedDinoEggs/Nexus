@@ -4,3 +4,4 @@
 **/logs/
 **/screct/
 package-lock.json
+**/templates/emails
