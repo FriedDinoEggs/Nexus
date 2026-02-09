@@ -1,3 +1,4 @@
+from drf_spectacular.utils import extend_schema
 from rest_framework import permissions, viewsets
 
 from apps.teams.serializers import TeamSerializer
@@ -6,6 +7,7 @@ from apps.users.permissions import IsEventManagerGroup, IsSuperAdminGroup
 from .models import Team
 
 
+@extend_schema(tags=['v1', 'Teams'])
 class TeamViewSet(viewsets.ModelViewSet):
     queryset = Team.objects.all()
     serializer_class = TeamSerializer

@@ -189,7 +189,7 @@ REST_FRAMEWORK = {
 
 SPECTACULAR_SETTINGS = {
     'TITLE': 'Nexus Project API',
-    'DESCRIPTION': '龍濱會員賽事系統',
+    'DESCRIPTION': '會員賽事系統',
     'VERSION': '0.0.1',
     'SERVE_INCLUDE_SCHEMA': False,
 
@@ -215,7 +215,11 @@ SPECTACULAR_SETTINGS = {
                 }
             }
         }
-    }
+    },
+    'ENUM_NAME_OVERRIDES': {
+        'EventTeamStatusEnum': 'apps.events.models.EventTeam.StatusChoices',
+        'MatchStatusEnum': 'apps.matches.models.BaseMatch.StatusChoices',
+    },
 }
 
 SIMPLE_JWT = {

@@ -4,6 +4,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.views import Response
 
 
+@extend_schema(tags=['v1', 'Core'])
 class health(views.APIView):
     permission_classes = [AllowAny]
 
