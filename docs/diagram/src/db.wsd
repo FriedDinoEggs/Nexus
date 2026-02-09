@@ -1,12 +1,10 @@
-
 @startuml
 ' 隱藏圓點，避免與連結線衝突
 hide circle
 ' 設定線條為正交直線
 skinparam linetype ortho
 
-
-
+' 繼承 django AbstractUse當作每個person
 abstract class AbstractUser {
     + username
     + password
@@ -22,89 +20,240 @@ abstract class AbstractUser {
     + user_permissions : manyToManyField
 }
 
-class "Users" as Users {
+class "User" as User {
     + username : {derived} {None}
     + email : {derived} {unique}
-    ' + email : << override, unique=Ture >>
     --
     + full_name : String
-    + data_of_birth : Date {optional}
+    + date_of_birth : Date {optional}
     + avatar : Image {optional}
-    + created_at : DataTime
-    + updated_at : DateTime
-    ' + data_of_birth : << blank=True >>
-    ' + avatar : << null=True >> 
-}
-AbstractUser <|-- Users
+    + created_at : DateTime {auto_now_add=True}
+    + updated_at : DateTime {auto_now=True}
 
-class "Teams" as Teams {
-    + team_name : String
-    + manager_id : <<FK>>
+    + phone : Str {optional}
+    + is_verified : Bool {default=False}
+}
+AbstractUser <|-- User
+
+abstract class "models.Model" as modelsModel {
+    << Framework >>
 }
 
-class "TeamMembers" as TeamMembers {
+abstract class "TimeStampedModel" as TimeStampedModel {
+    + created_at : DateTime { auto_now_add=True}
+    + updated_at : DateTime { auto_now=True }
+    --
+    Meta : abstract=True
+}
+
+abstract class "SoftDeleteModel" as SoftDeleteModel {
+    + deleted_at: DateTime {nullable, indexed}
+    --
+    + delete()
+    + hard_delete()
+    --
+    Meta: abstract=True
+}
+
+class "Location" as Location {
+    + name : CharField
+    + address : CharField
+    + latitude : DecimalField
+    + longitude : DecimalField
+}
+
+' ------ 隊伍 ------
+
+class "Team" as Team {
+    + name : String
+    + creator_id : <<FK>>
+    + leader_id : <<FK>> {nullable}
+    + coach_id : <<FK>> {nullable}
+}
+
+class "TeamMember" as TeamMember {
     + team_id : << FK >>
     + user_id : << FK >>
     --
     { unique_together = ('team_id', 'user_id')}
 }
 
-class "Games" as Games {
-    + game_name : String
-    + location : String
-    + date_time : DateTime
+' ------ 比賽 ------
+class "Event" as Event {
+    + location : << FK >>
+    + name : String
+    + event_type : Enum{Tournament, League, Friendly}
+    + start_time : DateTime
+    + end_time : DateTime
 }
 
-' game_id, teamA_id, teamB_id 不為unique_together
-' 避免複賽重複對戰
-class "Matches" as Matches {
-    + game_id : << FK >>
-    + team_a_id : << FK >>
-    + team_b_id : << FK >>
-    --
-    + team_a_score : Int
-    + team_b_score : Int
-    + match_status : Enum{Scheduled,  Completed}
-}
-
-class "PlayerMatches" as PlayerMatches {
-    + match_id : << FK >>
-    + user_a_id : << FK >>
-    + user_b_id : << FK >>
-    --
-    + user_a_points_vs_b : Int
-    + user_b_points_vs_a : Int
-    --
-    + { unique_together = ('match_id', 'user_a_id', 'user_b_id')}
-}
-
-class "Rosters" as Rosters {
+class "EventTeam" as EventTeam {
+    + event_id : << FK >>
     + team_id : << FK >>
-    + user_id : << FK >>
-    + match_id : << FK >>
     --
-    + point : Int
-    + is_played: Bool
-    + notes : String
+    + coach_id : << FK >> {nullable}
+    + leader_id : << FK >> {nullable}
+    + status : Enum {Pending, Approved, Rejected}
     --
-    {unique_together = (team_id, user_id, match_id)}
+    unique_together = (event_id, team_id)
 }
 
-Users "1" -- "*" Teams
 
-Users "1" -- "*" Rosters
-Teams "1" -- "*" Rosters
-Matches "1" -- "*" Rosters
+class "EventTeamMember" as EventTeamMember {
+    + event_team_id : << FK >>
+    + user_id : << FK >>
+    + is_player : Bool
+    + is_coach : Bool
+    + is_staff : Bool
+    --
+    { unique_together = ('event_team_id', 'user_id') }
+}
 
-Users "1" -- "*" TeamMembers
-Teams "1" -- "*" TeamMembers
+class "LunchOption" as LunchOption {
+    + event_id : << FK to Event >>
+    + name : String
+}
 
-Matches "1" -- "*" PlayerMatches
-Users "1" -- "*" PlayerMatches : userA
-Users "1" -- "*" PlayerMatches : userB
+class "RegistrationLunchOrder" as RegistrationLunchOrder {
+    + member_id : << FK to EventTeamMember >>
+    + option_id : << FK to LunchOption >>
+    + quantity : Int
+    + note : Text
+}
 
-Games "1" -- "*" Matches
-Teams "1" -- "*" Matches : teamA
-Teams "1" -- "*" Matches : teamB
+'-- Match Models
+
+abstract class "BaseMatchConfiguration" as BaseMatchConfiguration {
+    + format : Enum {Single, Double}
+    + requirement : String
+    --
+    Meta: abstract = True
+}
+
+
+abstract class "BaseMatch" as BaseMatch {
+    + date : Date
+    + time : Time
+    + number : Int
+    + status : Enum {Scheduled, InProgress, Completed, Cancelled}
+    + winner : Enum {TeamA, TeamB, Draw}
+    --
+    Meta: abstract=True
+}
+
+class "TeamMatch" as TeamMatch {
+    + team_a_id : << FK to EventTeam >>
+    + team_b_id : << FK to EventTeam >>
+    --
+    Meta: constraints: team_a_id < team_b_id
+}
+
+class "PlayerMatch" as PlayerMatch {
+    + team_match : << FK to TeamMatch >>
+    --
+    + { unique_together = ('team_match', 'number')}
+}
+
+class "MatchSet" as MatchSet {
+    + player_match : << FK to PlayerMatch >>
+    + set_number : Int
+    + score_a : Int
+    + score_b : Int
+    --
+    { unique_together = ('player_match', 'set_number')}
+}
+
+class "PlayerMatchParticipant" as PlayerMatchParticipant {
+    + player_match : << FK PlayerMatch >>
+    + player : << FK to User >>
+    --
+    + side : Enum {A, B}
+    + position : Int {default=1}
+    --
+    unique_together = (player_match, player)
+    unique_together = (player_match, side, position)
+    check = (position in [1, 2])
+}
+
+class "MatchTemplate" as MatchTemplate {
+    + name : Str
+    + creator : << FK to User >>
+}
+
+class "MatchTemplateItem" as MatchTemplateItem {
+    + template : << FK to MatchTemplate >>
+    + number : Int
+}
+
+class "EventMatchConfiguration" as EventMatchConfiguration {
+    + event : << OneToOne to Event >>
+    + template : << FK to MatchTemplate >>
+    + rule_config : JSON
+    ' {
+    '   winning_sets: 3,
+    '   team_winning_points: 3,
+    '   play_all_sets: bool,
+    '   play_all_matches: bool,
+    '   count_points_by_sets: bool
+    ' }
+}
+
+
+' ------- 關係線 -------
+modelsModel <|-- TimeStampedModel
+TimeStampedModel <|-- SoftDeleteModel
+
+TimeStampedModel <|-- TeamMember
+TimeStampedModel <|-- EventTeam
+TimeStampedModel <|-- EventTeamMember
+TimeStampedModel <|-- MatchTemplate
+TimeStampedModel <|-- MatchTemplateItem
+TimeStampedModel <|-- MatchSet
+TimeStampedModel <|-- PlayerMatchParticipant
+TimeStampedModel <|-- EventMatchConfiguration
+TimeStampedModel <|-- LunchOption
+TimeStampedModel <|-- RegistrationLunchOrder
+
+SoftDeleteModel <|-- Team 
+SoftDeleteModel <|-- Event
+SoftDeleteModel <|-- BaseMatch
+
+BaseMatchConfiguration <|-- PlayerMatch
+BaseMatchConfiguration <|-- MatchTemplateItem
+
+BaseMatch <|-- PlayerMatch
+BaseMatch <|-- TeamMatch
+
+
+Event "1" -- "*" EventTeam
+Team "1" -- "*" EventTeam
+
+Location "1" -- "*" Event
+
+EventTeam "1" -- "*" EventTeamMember
+User  "1" -- "*" EventTeamMember
+
+User "1" -- "*" Team : leader
+User "1" -- "*" Team : coach
+User "1" -- "*" Team : creator
+
+User "1" -- "*" TeamMember
+Team "1" -- "*" TeamMember
+
+EventTeam "1" -- "*" TeamMatch : teamA
+EventTeam "1" -- "*" TeamMatch : teamB
+
+TeamMatch "1" -- "*" PlayerMatch
+
+PlayerMatch "1" -- "*" MatchSet
+PlayerMatch "1" -- "*" PlayerMatchParticipant
+User "1" -- "*" PlayerMatchParticipant
+
+MatchTemplate "1" -- "*" MatchTemplateItem
+MatchTemplate "1" -- "*" EventMatchConfiguration
+Event "1" -- "1" EventMatchConfiguration
+Event "1" -- "*" LunchOption
+EventTeamMember "1" -- "*" RegistrationLunchOrder
+LunchOption "1" -- "*" RegistrationLunchOrder
 
 @enduml
