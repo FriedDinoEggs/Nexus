@@ -235,8 +235,14 @@ SIMPLE_JWT = {
 CELERY_TIMEZONE = 'Asia/Taipei'
 CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = 30 * 60
-CELERY_BROKER_URL = f'redis://:{os.environ["REDIS_PASSWORD"]}@localhost:6379/2'
-CELERY_RESULT_BACKEND = f'redis://:{os.environ["REDIS_PASSWORD"]}@localhost:6379/3'
+CELERY_BROKER_URL = os.environ.get(
+    'CELERY_BROKER_URL',
+    f'redis://:{os.environ["REDIS_PASSWORD"]}@localhost:6380/2'
+)
+CELERY_RESULT_BACKEND = os.environ.get(
+    'CELERY_RESULT_BACKEND',
+    f'redis://:{os.environ["REDIS_PASSWORD"]}@localhost:6380/3'
+)
 CELERY_RESULT_EXPIRES = 60*60
 
 # Mailtrap
