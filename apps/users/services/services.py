@@ -51,7 +51,7 @@ class UserVerificationServices:
             base_url = settings.SITE_BASEURL
 
         base_url.rstrip('/')
-        path = reverse('v1:users_app:password-reset-verify')
+        path = reverse('v1:users_app:email-verification-verify')
 
         param = {'mode': 'verifyEmail', 'code': token}
 
