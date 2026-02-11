@@ -40,10 +40,6 @@ RUN groupadd --gid 1000 nexus && \
 
 USER nexus
 
-EXPOSE 8000
-
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD celery -A config inspect ping || exit 1
 
 CMD ["celery", "-A", "config", "worker", "-l", "INFO", "--concurrency", "2"]
 
