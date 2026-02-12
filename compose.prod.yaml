@@ -130,7 +130,11 @@ services:
     image: celery-image:${GIT_TAG:-latest}
     command: celery -A config worker -l INFO --concurrency 2
     healthcheck:
-      test: ["CMD-SHELL", "celery -A config inspect ping --timeout 10"]
+      test:
+        [
+          "CMD-SHELL",
+          "celery -A config inspect ping -d celery@$$HOSTNAME --timeout 5 || exit 1",
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
