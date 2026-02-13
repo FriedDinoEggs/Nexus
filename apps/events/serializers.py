@@ -277,3 +277,11 @@ class EventMatchTemplateSerializer(serializers.ModelSerializer):
         return EventService.update_match_template(
             template=instance, name=validated_data.get('name'), items_data=items_data
         )
+
+
+class EventCalendarSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    title = serializers.CharField(source='name')
+    start = serializers.DateTimeField(source='start_time')
+    end = serializers.DateTimeField(source='end_time')
+    allDay = serializers.BooleanField(source='all_day')
