@@ -1,3 +1,5 @@
+from datetime import datetime, time
+
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db import models
@@ -30,6 +32,15 @@ class Event(SoftDeleteModel):
     )
     start_time = models.DateTimeField(null=True, blank=True)
     end_time = models.DateTimeField(null=True, blank=True)
+
+    @property
+    def all_day(self) -> bool:
+        if self.start_time and self.end_time:
+            midnight = time(0, 0)
+            is_midnight = self.start_time.time() == midnight and self.end_time.time() == midnight
+            is_oneday_diff = (self.end_time - self.start_time) == datetime.timedelta(days=1)
+            return bool(is_midnight and is_oneday_diff)
+        return False
 
     class Meta:
         default_manager_name = SoftDeleteModel.Meta.default_manager_name

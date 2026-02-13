@@ -169,6 +169,7 @@ class EventSerializer(serializers.ModelSerializer):
             'name',
             'start_time',
             'end_time',
+            'all_day',
             'type',
             'location_name',
             'event_teams',
