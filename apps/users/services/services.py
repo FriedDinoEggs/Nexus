@@ -14,12 +14,7 @@ from django.utils import timezone
 from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 
 from apps.users.models import BlackListToken
-
-from ..tasks import (
-    send_reset_password_mail_task,
-    send_verification_mail_task,
-    send_welcome_mail_task,
-)
+from apps.users.tasks import send_unified_mail_task
 
 logger = logging.getLogger(__name__)
 
@@ -50,13 +45,13 @@ class UserVerificationServices:
         if not base_url:
             base_url = settings.SITE_BASEURL
 
-        base_url.rstrip('/')
+        base_url = base_url.rstrip('/')
         path = reverse('v1:users_app:email-verification-verify')
 
         param = {'mode': 'verifyEmail', 'code': token}
 
         url = f'{base_url}{path}?{urlencode(param)}'
-        send_verification_mail_task.delay(verification_url=url, to=user.email)
+        send_unified_mail_task.delay(mail_type='verify', verification_url=url, to=user.email)
 
     @classmethod
     @transaction.atomic
@@ -69,7 +64,7 @@ class UserVerificationServices:
 
         if update_count != 0:
             email = User.objects.filter(pk=user_id).values_list('email', flat=True).first()
-            send_welcome_mail_task.delay(to=email)
+            send_unified_mail_task.delay(mail_type='welcome', to=email)
         else:
             logger.error(f'verify_mail: User {user_id} not found')
         return update_count
@@ -86,7 +81,7 @@ class UserVerificationServices:
         else:
             raise RuntimeError('Generate token error')
 
-        send_reset_password_mail_task.delay(code=code, to=account)
+        send_unified_mail_task.delay(mail_type='reset_pwd', code=code, to=account)
 
     @classmethod
     def verify_reset_pwd(cls, *, code: str, account: str) -> bool:
