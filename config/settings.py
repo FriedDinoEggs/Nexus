@@ -348,6 +348,6 @@ LOGGING = {
 # Django Prometheus Settings
 # Define latency buckets (in seconds) to enable p95/p99 histograms for DB queries
 PROMETHEUS_LATENCY_BUCKETS = (.008, .016, .032, .064, .128, .256, .512, 1.024, 2.048, 4.096, 8.192, 16.384, 32.768, 65.536, 131.072, 262.144, 524.288, 1048.576)
-PROMETHEUS_EXPORT_MIGRATIONS = True
+PROMETHEUS_EXPORT_MIGRATIONS = False
 
 
