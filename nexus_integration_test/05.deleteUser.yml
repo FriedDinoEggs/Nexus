@@ -1,0 +1,37 @@
+info:
+  name: 05.deleteUser
+  type: http
+  seq: 7
+
+http:
+  method: DELETE
+  url: 127.0.0.1:8000/api/v1/users/{{user_id}}/
+  auth:
+    type: bearer
+    token: "{{jwt_access}}"
+
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        const axios = require('axios');
+
+        const response = await axios.post('http://127.0.0.1:8000/api/v1/users/login/',{
+          email: 'test@test.com',
+          password: 'dkizxs32c'
+        });
+        bru.setVar('jwt_access', response.data.access);
+    - type: after-response
+      code: |-
+        bru.setVar("user_id", null);
+        bru.setVar("jwt_access", null);
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: "204"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
