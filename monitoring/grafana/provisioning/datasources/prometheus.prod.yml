@@ -6,5 +6,5 @@ datasources:
     uid: DS_PROMETHEUS
     access: proxy
     url: http://prometheus_prod:9090
-    isDefault: true
+    isDefault: ${GF_IS_DEFAULT_PROD}
     editable: false
