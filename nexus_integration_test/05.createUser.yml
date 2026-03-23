@@ -1,0 +1,35 @@
+info:
+  name: 05.createUser
+  type: http
+  seq: 6
+
+http:
+  method: POST
+  url: 127.0.0.1:8000/api/v1/users/register/
+  body:
+    type: json
+    data: |-
+      {
+        "email": "test@test.com",
+        "password": "dkizxs32c",
+        "password_confirm": "dkizxs32c"
+      }
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        const data = res.getBody()
+        if(data.id){
+          bru.setVar("user_id", data.id);
+        }
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: "201"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
