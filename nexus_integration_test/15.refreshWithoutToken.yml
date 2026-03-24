@@ -1,0 +1,26 @@
+info:
+  name: 15.refreshWithoutToken
+  type: http
+  seq: 17
+
+http:
+  method: POST
+  url: 127.0.0.1:8000/api/v1/users/refresh/
+  body:
+    type: json
+    data: |-
+      {}
+
+runtime:
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: "400"
+    - expression: res.body.refresh
+      operator: isNotEmpty
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
