@@ -1,0 +1,50 @@
+info:
+  name: 12.getUsersAsManager
+  type: http
+  seq: 14
+
+http:
+  method: GET
+  url: 127.0.0.1:8000/api/v1/users/
+  auth:
+    type: bearer
+    token: "{{jwt_access}}"
+
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        const axios = require('axios');
+
+        const response = await axios.post(
+          'http://127.0.0.1:8000/api/v1/users/login/',{
+            email: 'testEventManager@test.com',
+            password: 'testEventManager'
+          }
+        );
+        bru.setVar("jwt_access", response.data.access);
+    - type: after-response
+      code: |-
+        const data = res.getBody();
+        const users = data.results || data;
+        const adminUser = users.find((user) => user.full_name === 'SuperAdmin');
+        const memberUser = users.find((user) => user.full_name === 'Member');
+
+        if (!adminUser || adminUser.email !== 'testAdmin@test.com') {
+          throw new Error('Manager should see admin email');
+        }
+        if (!memberUser || memberUser.email !== 'testMember@test.com') {
+          throw new Error('Manager should see member email');
+        }
+
+        bru.setVar("jwt_access", null);
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: "200"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

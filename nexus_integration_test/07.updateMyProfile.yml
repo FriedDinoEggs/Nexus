@@ -1,0 +1,63 @@
+info:
+  name: 07.updateMyProfile
+  type: http
+  seq: 9
+
+http:
+  method: PATCH
+  url: 127.0.0.1:8000/api/v1/users/me/
+  body:
+    type: json
+    data: |-
+      {
+        "full_name": "Member Updated"
+      }
+  auth:
+    type: bearer
+    token: "{{jwt_access}}"
+
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        const axios = require('axios');
+
+        const response = await axios.post(
+          'http://127.0.0.1:8000/api/v1/users/login/',{
+            email: 'testMember@test.com',
+            password: 'testMember'
+          }
+        );
+        bru.setVar("jwt_access", response.data.access);
+    - type: after-response
+      code: |-
+        const axios = require("axios");
+        const token = bru.getVar("jwt_access")
+
+        const response = await axios.patch(
+          'http://127.0.0.1:8000/api/v1/users/me/',
+          { full_name: "Member"},
+          {
+            headers: {
+              "Authorization": `Bearer ${token}`
+            } 
+          }
+        );
+
+        bru.setVar("jwt_access", null);
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: "200"
+    - expression: res.body.full_name
+      operator: eq
+      value: Member Updated
+    - expression: res.body.email
+      operator: eq
+      value: testMember@test.com
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
