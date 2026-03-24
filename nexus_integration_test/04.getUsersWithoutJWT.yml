@@ -10,9 +10,6 @@ http:
     - name: ""
       value: ""
       type: query
-  auth:
-    type: bearer
-    token: ""
 
 runtime:
   assertions:

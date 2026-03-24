@@ -1,0 +1,45 @@
+info:
+  name: 08.refreshToken
+  type: http
+  seq: 10
+
+http:
+  method: POST
+  url: 127.0.0.1:8000/api/v1/users/refresh/
+  body:
+    type: json
+    data: |-
+      {
+        "refresh": "{{jwt_refresh}}"
+      }
+
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        const axios = require('axios');
+
+        const response = await axios.post(
+          'http://127.0.0.1:8000/api/v1/users/login/',{
+            email: 'testAdmin@test.com',
+            password: 'testAdmin'
+          }
+        );
+        bru.setVar("jwt_refresh", response.data.refresh);
+    - type: after-response
+      code: |-
+        bru.setVar("jwt_refresh", null);
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: "200"
+    - expression: res.body.access
+      operator: isNotEmpty
+    - expression: res.body.access_token
+      operator: isNotEmpty
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

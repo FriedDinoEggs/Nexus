@@ -12,19 +12,23 @@ http:
 
 runtime:
   scripts:
-    - type: after-response
+    - type: before-request
       code: |-
         const axios = require('axios');
 
         try {
-          const response = await axios.post('http://127.0.0.1:8000/api/v1/users/login/',{
-            email: 'testAdmin@test.com',
-            password: 'testAdmin'
-          });
-          bru.setVar('jwt_access', response.data.access);
+          const response = await axios.post(
+            'http://127.0.0.1:8000/api/v1/users/login/',{
+              email: 'testAdmin@test.com',
+              password: 'testAdmin'
+            }
+          );
+          bru.setVar("jwt_access", response.data.access);
         } catch(error) {
           console.error("error code", error.response.status);
         }
+    - type: after-response
+      code: bru.setVar("jwt_access", null);
   assertions:
     - expression: res.status
       operator: eq
