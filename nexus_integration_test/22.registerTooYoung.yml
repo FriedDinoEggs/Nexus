@@ -1,0 +1,31 @@
+info:
+  name: 22.registerTooYoung
+  type: http
+  seq: 24
+
+http:
+  method: POST
+  url: 127.0.0.1:8000/api/v1/users/register/
+  body:
+    type: json
+    data: |-
+      {
+        "email": "test-too-young@test.com",
+        "password": "dkizxs32c",
+        "password_confirm": "dkizxs32c",
+        "date_of_birth": "2023-03-24"
+      }
+
+runtime:
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: "400"
+    - expression: res.body.date_of_birth
+      operator: isNotEmpty
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

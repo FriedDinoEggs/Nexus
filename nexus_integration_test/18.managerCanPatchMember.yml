@@ -1,0 +1,80 @@
+info:
+  name: 18.managerCanPatchMember
+  type: http
+  seq: 20
+
+http:
+  method: PATCH
+  url: 127.0.0.1:8000/api/v1/users/{{target_user_id}}/
+  auth:
+    type: bearer
+    token: "{{jwt_access}}"
+  body:
+    type: json
+    data: |-
+      {
+        "full_name": "Managed Member"
+      }
+
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        const axios = require('axios');
+
+        const managerLogin = await axios.post(
+          'http://127.0.0.1:8000/api/v1/users/login/',{
+            email: 'testEventManager@test.com',
+            password: 'testEventManager'
+          }
+        );
+        const usersResponse = await axios.get(
+          'http://127.0.0.1:8000/api/v1/users/',
+          {
+            headers: {
+              Authorization: `Bearer ${managerLogin.data.access}`
+            }
+          }
+        );
+        const users = usersResponse.data.results || usersResponse.data;
+        const memberUser = users.find((user) => user.email === 'testMember@test.com');
+
+        if (!memberUser) {
+          throw new Error('Member user not found');
+        }
+
+        bru.setVar("target_user_id", memberUser.id);
+        bru.setVar("jwt_access", managerLogin.data.access);
+    - type: after-response
+      code: |-
+        const axios = require('axios');
+        const token = bru.getVar("jwt_access");
+        const targetUserId = bru.getVar("target_user_id");
+
+        if (token && targetUserId) {
+          await axios.patch(
+            `http://127.0.0.1:8000/api/v1/users/${targetUserId}/`,
+            { full_name: 'Member' },
+            {
+              headers: {
+                Authorization: `Bearer ${token}`
+              }
+            }
+          );
+        }
+
+        bru.setVar("target_user_id", null);
+        bru.setVar("jwt_access", null);
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: "200"
+    - expression: res.body.full_name
+      operator: eq
+      value: Managed Member
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

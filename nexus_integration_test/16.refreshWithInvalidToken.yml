@@ -1,0 +1,26 @@
+info:
+  name: 16.refreshWithInvalidToken
+  type: http
+  seq: 18
+
+http:
+  method: POST
+  url: 127.0.0.1:8000/api/v1/users/refresh/
+  body:
+    type: json
+    data: |-
+      {
+        "refresh": "not-a-valid-jwt"
+      }
+
+runtime:
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: "401"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

@@ -1,0 +1,50 @@
+info:
+  name: 14.accessTokenRejectedAfterLogout
+  type: http
+  seq: 16
+
+http:
+  method: GET
+  url: 127.0.0.1:8000/api/v1/users/me/
+  auth:
+    type: bearer
+    token: "{{jwt_access}}"
+
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        const axios = require('axios');
+
+        const loginResponse = await axios.post(
+          'http://127.0.0.1:8000/api/v1/users/login/',{
+            email: 'testAdmin@test.com',
+            password: 'testAdmin'
+          }
+        );
+
+        bru.setVar("jwt_access", loginResponse.data.access);
+
+        await axios.post(
+          'http://127.0.0.1:8000/api/v1/users/logout/',
+          {
+            refresh: loginResponse.data.refresh
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${loginResponse.data.access}`
+            }
+          }
+        );
+    - type: after-response
+      code: bru.setVar("jwt_access", null);
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: "401"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
