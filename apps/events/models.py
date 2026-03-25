@@ -1,4 +1,4 @@
-from datetime import datetime, time
+from datetime import time, timedelta
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
@@ -38,7 +38,7 @@ class Event(SoftDeleteModel):
         if self.start_time and self.end_time:
             midnight = time(0, 0)
             is_midnight = self.start_time.time() == midnight and self.end_time.time() == midnight
-            is_oneday_diff = (self.end_time - self.start_time) == datetime.timedelta(days=1)
+            is_oneday_diff = (self.end_time - self.start_time) == timedelta(days=1)
             return bool(is_midnight and is_oneday_diff)
         return False
 

@@ -182,7 +182,8 @@ class EventSerializer(serializers.ModelSerializer):
         if instance.location:
             ret['location_name'] = instance.location.name
 
-        ret['rule_config'] = instance.match_config.rule_config
+        match_config = getattr(instance, 'match_config', None)
+        ret['rule_config'] = match_config.rule_config if match_config else None
 
         return ret
 
