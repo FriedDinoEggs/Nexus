@@ -41,12 +41,10 @@ class MatchScoringTests(TestCase):
         self.config = EventMatchConfiguration.objects.create(
             event=self.event,
             template=self.template,
-            rule_config={
-                'winning_sets': 3,
-                'team_winning_points': 3,
-                'play_all_sets': False,
-                'play_all_matches': False,
-            },
+            winning_sets=3,
+            team_winning_points=3,
+            play_all_sets=False,
+            play_all_matches=False,
         )
 
         # Initialize a Team Match
@@ -76,7 +74,7 @@ class MatchScoringTests(TestCase):
     def test_player_match_play_all(self):
         """Test PlayerMatch waits for all sets (Play All mode)"""
         # Update config to play_all_sets = True
-        self.config.rule_config['play_all_sets'] = True
+        self.config.play_all_sets = True
         self.config.save()
 
         pm = self.player_matches[0]
@@ -117,7 +115,7 @@ class MatchScoringTests(TestCase):
 
     def test_team_match_play_all(self):
         """Test TeamMatch waits for all matches (Play All mode)"""
-        self.config.rule_config['play_all_matches'] = True
+        self.config.play_all_matches = True
         self.config.save()
 
         # A wins 3 matches (would be win in race mode)
@@ -195,8 +193,8 @@ class MatchScoringTests(TestCase):
         Match 2: B wins 3-1 (1 set for A, 3 for B)
         Total should be 4:5
         """
-        self.config.rule_config['count_points_by_sets'] = True
-        self.config.rule_config['play_all_matches'] = True
+        self.config.count_points_by_sets = True
+        self.config.play_all_matches = True
         self.config.save()
 
         # Match 1: A wins 3-2 (A:3, B:2)
@@ -240,9 +238,9 @@ class MatchScoringTests(TestCase):
 
     def test_player_match_deuce(self):
         """Test deuce logic: must win by 2 points when use_deuce is True"""
-        self.config.rule_config['use_deuce'] = True
-        self.config.rule_config['set_winning_points'] = 11
-        self.config.rule_config['winning_sets'] = 1
+        self.config.use_deuce = True
+        self.config.set_winning_points = 11
+        self.config.winning_sets = 1
         self.config.save()
 
         pm = self.player_matches[0]
@@ -260,9 +258,9 @@ class MatchScoringTests(TestCase):
 
     def test_player_match_no_deuce(self):
         """Test no-deuce logic: ends exactly at target score"""
-        self.config.rule_config['use_deuce'] = False
-        self.config.rule_config['set_winning_points'] = 11
-        self.config.rule_config['winning_sets'] = 1
+        self.config.use_deuce = False
+        self.config.set_winning_points = 11
+        self.config.winning_sets = 1
         self.config.save()
 
         pm = self.player_matches[0]
