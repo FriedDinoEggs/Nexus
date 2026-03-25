@@ -6,8 +6,11 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.core.cache import cache
 from django.test import RequestFactory, TestCase
+from django.urls import reverse
 from django.utils import timezone
+from rest_framework import status
 from rest_framework.exceptions import ValidationError
+from rest_framework.test import APITestCase
 from rest_framework_simplejwt.tokens import AccessToken
 
 from apps.users.models import BlackListToken
@@ -276,3 +279,149 @@ class BlackListServiceTests(BaseUsersTestCase):
 
     def test_is_token_blacklisted_returns_false_without_token(self):
         self.assertFalse(BlackListService.is_token_blacklisted(None))
+
+
+class UserViewsAPITests(APITestCase):
+    def setUp(self):
+        super().setUp()
+        cache.clear()
+        self.superadmin_group, _ = Group.objects.get_or_create(name='SuperAdmin')
+        self.manager_group, _ = Group.objects.get_or_create(name='EventManager')
+        self.member_group, _ = Group.objects.get_or_create(name='Member')
+
+        self.admin = User.objects.create_user(
+            email='admin-api@test.com',
+            password='AdminPass123!@#',
+            full_name='Admin API',
+        )
+        self.admin.groups.set([self.superadmin_group])
+
+        self.manager = User.objects.create_user(
+            email='manager-api@test.com',
+            password='ManagerPass123!@#',
+            full_name='Manager API',
+        )
+        self.manager.groups.set([self.manager_group])
+
+        self.member = User.objects.create_user(
+            email='member-api@test.com',
+            password='MemberPass123!@#',
+            full_name='Member API',
+            date_of_birth=date(2000, 1, 1),
+        )
+        self.member.groups.set([self.member_group])
+
+    @patch('apps.users.views.UserVerificationServices.send_verification_mail')
+    def test_verification_send_returns_accepted_for_authenticated_user(self, mock_send_mail):
+        self.client.force_authenticate(user=self.member)
+
+        response = self.client.post(
+            reverse('v1:users_app:email-verification-send'),
+            {'mode': 'verifyEmail'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
+        mock_send_mail.assert_called_once()
+
+    @patch(
+        'apps.users.views.UserVerificationServices.send_verification_mail',
+        side_effect=RuntimeError('Generate token error'),
+    )
+    def test_verification_send_returns_bad_request_on_service_error(self, _mock_send_mail):
+        self.client.force_authenticate(user=self.member)
+
+        response = self.client.post(
+            reverse('v1:users_app:email-verification-send'),
+            {'mode': 'verifyEmail'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['detail'], 'Generate token error')
+
+    @patch('apps.users.views.UserVerificationServices.verify_mail', return_value=1)
+    def test_verification_verify_returns_ok_for_valid_code(self, mock_verify_mail):
+        response = self.client.post(
+            reverse('v1:users_app:email-verification-verify'),
+            {'mode': 'verifyEmail', 'code': 'valid-code'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        mock_verify_mail.assert_called_once_with(token='valid-code')
+
+    @patch('apps.users.views.UserVerificationServices.verify_mail', return_value=0)
+    def test_verification_verify_returns_bad_request_for_invalid_code(self, _mock_verify_mail):
+        response = self.client.post(
+            reverse('v1:users_app:email-verification-verify'),
+            {'mode': 'verifyEmail', 'code': 'invalid-code'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    @patch('apps.users.views.UserVerificationServices.send_reset_pwd_mail')
+    def test_password_reset_create_returns_accepted(self, mock_send_reset):
+        response = self.client.post(
+            reverse('v1:users_app:password-reset-list'),
+            {'email': self.member.email},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
+        self.assertEqual(response.data['detail'], 'verification code has been sent')
+        mock_send_reset.assert_called_once_with(account=self.member.email)
+
+    @patch(
+        'apps.users.serializers.UserVerificationServices.verify_reset_pwd',
+        return_value=True,
+    )
+    def test_password_reset_verify_updates_password(self, mock_verify_reset):
+        response = self.client.post(
+            reverse('v1:users_app:password-reset-verify'),
+            {
+                'email': self.member.email,
+                'password': 'NewPass123!@#',
+                'verification_code': '654321',
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['message'], 'password reset successful')
+        self.member.refresh_from_db()
+        self.assertTrue(self.member.check_password('NewPass123!@#'))
+        mock_verify_reset.assert_called_once_with(code='654321', account=self.member.email)
+
+    def test_member_retrieve_other_user_is_forbidden(self):
+        self.client.force_authenticate(user=self.member)
+
+        response = self.client.get(
+            reverse('v1:users_app:users-detail', kwargs={'pk': self.admin.pk}),
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_manager_retrieve_member_hides_date_of_birth(self):
+        self.client.force_authenticate(user=self.manager)
+
+        response = self.client.get(
+            reverse('v1:users_app:users-detail', kwargs={'pk': self.member.pk}),
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['email'], self.member.email)
+        self.assertNotIn('date_of_birth', response.data)
+        self.assertNotIn('is_active', response.data)
+
+    def test_owner_retrieve_self_includes_private_fields(self):
+        self.client.force_authenticate(user=self.member)
+
+        response = self.client.get(
+            reverse('v1:users_app:users-detail', kwargs={'pk': self.member.pk}),
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['email'], self.member.email)
+        self.assertIn('date_of_birth', response.data)
