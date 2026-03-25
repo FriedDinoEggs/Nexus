@@ -1,12 +1,29 @@
+import logging
+from contextlib import contextmanager
+
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.urls import reverse
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from .models import EventMatchTemplate
+from apps.teams.models import Team
+
+from .models import Event, EventMatchTemplate, EventTeam, EventTeamMember
 
 User = get_user_model()
+
+
+@contextmanager
+def suppress_django_request_warnings():
+    logger = logging.getLogger('django.request')
+    old_level = logger.level
+    logger.setLevel(logging.ERROR)
+    try:
+        yield
+    finally:
+        logger.setLevel(old_level)
 
 
 class MatchTemplateAPITests(APITestCase):
@@ -55,7 +72,8 @@ class MatchTemplateAPITests(APITestCase):
     def test_create_template_as_regular_user_forbidden(self):
         self.client.force_authenticate(user=self.regular_user)
         data = {'name': 'Regular Template', 'items': []}
-        response = self.client.post(self.template_url, data, format='json')
+        with suppress_django_request_warnings():
+            response = self.client.post(self.template_url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_list_templates_authenticated(self):
@@ -69,3 +87,110 @@ class MatchTemplateAPITests(APITestCase):
             self.assertEqual(response.data['count'], initial_count + 1)
         else:
             self.assertEqual(len(response.data), initial_count + 1)
+
+
+class EventAndEventTeamAPITests(APITestCase):
+    def setUp(self):
+        self.admin_group, _ = Group.objects.get_or_create(name='SuperAdmin')
+        self.manager_group, _ = Group.objects.get_or_create(name='EventManager')
+        self.member_group, _ = Group.objects.get_or_create(name='Member')
+
+        self.admin = User.objects.create_user(
+            email='events-admin@test.com',
+            password='AdminPass123!@#',
+            full_name='Events Admin',
+        )
+        self.admin.groups.set([self.admin_group])
+
+        self.manager = User.objects.create_user(
+            email='events-manager@test.com',
+            password='ManagerPass123!@#',
+            full_name='Events Manager',
+        )
+        self.manager.groups.set([self.manager_group])
+
+        self.member = User.objects.create_user(
+            email='events-member@test.com',
+            password='MemberPass123!@#',
+            full_name='Events Member',
+        )
+        self.member.groups.set([self.member_group])
+
+        self.events_url = reverse('v1:events_app:events-list')
+        self.event_teams_me_url = reverse('v1:events_app:event-teams-me')
+
+    def test_event_calendar_query_filters_by_time_range(self):
+        now = timezone.now()
+        in_range = Event.objects.create(
+            name='In Range',
+            type=Event.TypeChoices.LEAGUE,
+            start_time=now,
+            end_time=now + timezone.timedelta(hours=2),
+        )
+        Event.objects.create(
+            name='Out Of Range',
+            type=Event.TypeChoices.LEAGUE,
+            start_time=now + timezone.timedelta(days=5),
+            end_time=now + timezone.timedelta(days=5, hours=2),
+        )
+
+        self.client.force_authenticate(user=self.member)
+        response = self.client.get(
+            self.events_url,
+            {
+                'calendar': 'true',
+                'start': (now - timezone.timedelta(hours=1)).isoformat(),
+                'end': (now + timezone.timedelta(hours=3)).isoformat(),
+            },
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]['id'], in_range.id)
+        self.assertEqual(response.data[0]['title'], in_range.name)
+
+    def test_manager_can_create_event_team_with_new_team_name(self):
+        event = Event.objects.create(name='League 2026', type=Event.TypeChoices.LEAGUE)
+        self.client.force_authenticate(user=self.manager)
+
+        response = self.client.post(
+            reverse('v1:events_app:event-teams-nested-list', kwargs={'event_id': event.id}),
+            {'new_team_name': 'Fresh Team'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        event_team = EventTeam.objects.get(pk=response.data['id'])
+        self.assertEqual(event_team.event, event)
+        self.assertEqual(event_team.team.name, 'Fresh Team')
+        self.assertEqual(event_team.team.creator, self.manager)
+
+    def test_member_cannot_create_event_team(self):
+        event = Event.objects.create(name='Members League', type=Event.TypeChoices.LEAGUE)
+        self.client.force_authenticate(user=self.member)
+
+        with suppress_django_request_warnings():
+            response = self.client.post(
+                reverse('v1:events_app:event-teams-nested-list', kwargs={'event_id': event.id}),
+                {'new_team_name': 'Should Fail'},
+                format='json',
+            )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_event_teams_me_returns_only_joined_teams(self):
+        event = Event.objects.create(name='Joined Event', type=Event.TypeChoices.LEAGUE)
+        joined_team = Team.objects.create(name='Joined Team', creator=self.manager)
+        other_team = Team.objects.create(name='Other Team', creator=self.manager)
+
+        joined_event_team = EventTeam.objects.create(event=event, team=joined_team)
+        EventTeam.objects.create(event=event, team=other_team)
+
+        EventTeamMember.objects.create(event_team=joined_event_team, user=self.member)
+
+        self.client.force_authenticate(user=self.member)
+        response = self.client.get(self.event_teams_me_url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]['team_name'], 'Joined Team')
