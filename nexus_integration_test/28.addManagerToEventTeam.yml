@@ -1,0 +1,55 @@
+info:
+  name: 28.addManagerToEventTeam
+  type: http
+  seq: 30
+
+http:
+  method: POST
+  url: 127.0.0.1:8000/api/v1/event-teams/{{event_team_id}}/members/
+  auth:
+    type: bearer
+    token: "{{jwt_access}}"
+  body:
+    type: json
+    data: |-
+      {
+        "is_player": true
+      }
+
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        const axios = require('axios');
+
+        const response = await axios.post(
+          'http://127.0.0.1:8000/api/v1/users/login/',
+          {
+            email: 'testEventManager@test.com',
+            password: 'testEventManager'
+          }
+        );
+        bru.setVar("jwt_access", response.data.access);
+    - type: after-response
+      code: |-
+        const data = res.getBody();
+        const eventTeamId = Number(bru.getVar("event_team_id"));
+
+        if (data.event_team !== eventTeamId) {
+          throw new Error(`Expected event_team ${eventTeamId}, got ${data.event_team}`);
+        }
+        if (data.is_player !== true) {
+          throw new Error('Expected is_player to be true');
+        }
+
+        bru.setVar("jwt_access", null);
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: "201"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
