@@ -1,0 +1,48 @@
+info:
+  name: 29.getMyEventTeams
+  type: http
+  seq: 31
+
+http:
+  method: GET
+  url: 127.0.0.1:8000/api/v1/event-teams/me/
+  auth:
+    type: bearer
+    token: "{{jwt_access}}"
+
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        const axios = require('axios');
+
+        const response = await axios.post(
+          'http://127.0.0.1:8000/api/v1/users/login/',
+          {
+            email: 'testEventManager@test.com',
+            password: 'testEventManager'
+          }
+        );
+        bru.setVar("jwt_access", response.data.access);
+    - type: after-response
+      code: |-
+        const data = res.getBody();
+        const eventTeams = data.results || data;
+        const eventTeamId = Number(bru.getVar("event_team_id"));
+        const target = eventTeams.find((item) => item.id === eventTeamId);
+
+        if (!target) {
+          throw new Error(`Joined event team ${eventTeamId} not found in /event-teams/me/`);
+        }
+
+        bru.setVar("jwt_access", null);
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: "200"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
