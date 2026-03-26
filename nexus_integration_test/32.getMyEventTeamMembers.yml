@@ -1,0 +1,55 @@
+info:
+  name: 32.getMyEventTeamMembers
+  type: http
+  seq: 34
+
+http:
+  method: GET
+  url: 127.0.0.1:8000/api/v1/event-teams/{{event_team_id}}/members/?user=me
+  auth:
+    type: bearer
+    token: "{{jwt_access}}"
+
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        const axios = require('axios');
+
+        const response = await axios.post(
+          'http://127.0.0.1:8000/api/v1/users/login/',
+          {
+            email: 'testEventManager@test.com',
+            password: 'testEventManager'
+          }
+        );
+        bru.setVar("jwt_access", response.data.access);
+    - type: after-response
+      code: |-
+        const data = res.getBody();
+        const results = data.results || data;
+
+        if (!Array.isArray(results) || results.length === 0) {
+          throw new Error('Expected at least one event team member for user=me.');
+        }
+
+        const target = results.find((item) => item.event_team === Number(bru.getVar("event_team_id")));
+
+        if (!target) {
+          throw new Error('Current user membership was not found in event team member list.');
+        }
+        if (target.is_player !== true) {
+          throw new Error('Expected current user membership to be a player.');
+        }
+
+        bru.setVar("jwt_access", null);
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: "200"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
