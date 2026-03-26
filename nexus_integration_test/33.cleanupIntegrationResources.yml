@@ -1,7 +1,7 @@
 info:
-  name: 30.cleanupIntegrationResources
+  name: 33.cleanupIntegrationResources
   type: http
-  seq: 32
+  seq: 35
 
 http:
   method: DELETE
@@ -54,6 +54,7 @@ runtime:
         bru.setVar("event_id", null);
         bru.setVar("team_id", null);
         bru.setVar("template_id", null);
+        bru.setVar("lunch_option_id", null);
         bru.setVar("jwt_access", null);
   assertions:
     - expression: res.status
