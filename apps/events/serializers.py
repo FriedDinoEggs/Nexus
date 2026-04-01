@@ -47,6 +47,31 @@ class EventMatchTemplateItemSerializer(serializers.ModelSerializer):
         fields = ['id', 'number', 'format', 'requirement']
 
 
+class EventMatchTemplateSerializer(serializers.ModelSerializer):
+    items = EventMatchTemplateItemSerializer(many=True)
+    creator_name = serializers.ReadOnlyField(source='creator.full_name')
+
+    class Meta:
+        model = EventMatchTemplate
+        fields = ['id', 'name', 'creator', 'creator_name', 'items', 'created_at']
+        read_only_fields = ['creator', 'created_at']
+
+    def create(self, validated_data):
+        items_data = validated_data.pop('items')
+        request = self.context.get('request')
+        creator = request.user if request and request.user.is_authenticated else None
+
+        return EventService.create_match_template(
+            name=validated_data['name'], items_data=items_data, creator=creator
+        )
+
+    def update(self, instance, validated_data):
+        items_data = validated_data.pop('items', None)
+        return EventService.update_match_template(
+            template=instance, name=validated_data.get('name'), items_data=items_data
+        )
+
+
 class EventTemplateSerializer(EventRuleConfigSerializer):
     template_items = EventMatchTemplateItemSerializer(
         many=True, required=True, help_text='List of items defining the match structure'
@@ -161,6 +186,9 @@ class EventSerializer(serializers.ModelSerializer):
     lunch_options = LunchOptionSerializer(many=True, required=False)
     rule_config = EventRuleConfigSerializer(required=True, write_only=True)
     location_name = serializers.CharField(required=False, allow_null=True, max_length=128)
+    match_template = serializers.PrimaryKeyRelatedField(
+        queryset=EventMatchTemplate.objects.all(), required=True, write_only=True
+    )
 
     class Meta:
         model = Event
@@ -175,6 +203,8 @@ class EventSerializer(serializers.ModelSerializer):
             'event_teams',
             'lunch_options',
             'rule_config',
+            'match_template',
+            'match_template',
         ]
 
     def to_representation(self, instance):
@@ -192,6 +222,7 @@ class EventSerializer(serializers.ModelSerializer):
         lunch_options_data = validated_data.pop('lunch_options', [])
         rule_config_data = validated_data.pop('rule_config', None)
         location_name = validated_data.pop('location_name', None)
+        match_template = validated_data.pop('match_template', None)
 
         if location_name:
             location, _ = Location.objects.get_or_create(name=location_name)
@@ -214,7 +245,7 @@ class EventSerializer(serializers.ModelSerializer):
                 LunchOption.objects.bulk_create(options)
 
             if rule_config_data:
-                self._apply_event_config(event, rule_config_data)
+                self._apply_event_config(event, rule_config_data, match_template)
                 # event.match_config.refresh_from_db()
 
             return event
@@ -226,6 +257,7 @@ class EventSerializer(serializers.ModelSerializer):
         lunch_options_data = validated_data.pop('lunch_options', None)
         rule_config_data = validated_data.pop('rule_config', None)
         location_name = validated_data.pop('location_name', None)
+        match_template = validated_data.pop('match_template', None)
 
         if location_name is not None:
             if location_name:
@@ -245,38 +277,15 @@ class EventSerializer(serializers.ModelSerializer):
             LunchOption.objects.bulk_create(options)
 
         if rule_config_data:
-            self._apply_event_config(instance, rule_config_data)
+            self._apply_event_config(instance, rule_config_data, match_template)
 
         return instance
 
-    def _apply_event_config(self, event, config_data):
+    def _apply_event_config(self, event, config_data, match_template_id=None):
         rule_settings = dict(config_data)
 
-        EventService.set_event_config(event=event, template=None, rule_config=rule_settings)
-
-
-class EventMatchTemplateSerializer(serializers.ModelSerializer):
-    items = EventMatchTemplateItemSerializer(many=True)
-    creator_name = serializers.ReadOnlyField(source='creator.full_name')
-
-    class Meta:
-        model = EventMatchTemplate
-        fields = ['id', 'name', 'creator', 'creator_name', 'items', 'created_at']
-        read_only_fields = ['creator', 'created_at']
-
-    def create(self, validated_data):
-        items_data = validated_data.pop('items')
-        request = self.context.get('request')
-        creator = request.user if request and request.user.is_authenticated else None
-
-        return EventService.create_match_template(
-            name=validated_data['name'], items_data=items_data, creator=creator
-        )
-
-    def update(self, instance, validated_data):
-        items_data = validated_data.pop('items', None)
-        return EventService.update_match_template(
-            template=instance, name=validated_data.get('name'), items_data=items_data
+        EventService.set_event_config(
+            event=event, template=match_template_id, rule_config=rule_settings
         )
 
 
