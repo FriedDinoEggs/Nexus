@@ -383,6 +383,12 @@ wheels = [
 ]
 
 [[package]]
+name = "djangorestframework-camel-case"
+version = "1.4.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/f4/87/647ce93053cb5e35e07bded676340774fe43190388b885c54aff47d8557b/djangorestframework-camel-case-1.4.2.tar.gz", hash = "sha256:cdae75846648abb6585c7470639a1d2fb064dc45f8e8b62aaa50be7f1a7a61f4", size = 8839, upload-time = "2023-02-13T15:28:11.941Z" }
+
+[[package]]
 name = "djangorestframework-simplejwt"
 version = "5.5.1"
 source = { registry = "https://pypi.org/simple" }
@@ -727,6 +733,7 @@ dependencies = [
     { name = "django-redis" },
     { name = "django-stubs" },
     { name = "djangorestframework" },
+    { name = "djangorestframework-camel-case" },
     { name = "djangorestframework-simplejwt", extra = ["crypto"] },
     { name = "djangorestframework-stubs" },
     { name = "dotenv" },
@@ -763,6 +770,7 @@ requires-dist = [
     { name = "django-redis", specifier = ">=6.0.0" },
     { name = "django-stubs", specifier = ">=5.2.8" },
     { name = "djangorestframework", specifier = ">=3.16.1" },
+    { name = "djangorestframework-camel-case", specifier = ">=1.4.2" },
     { name = "djangorestframework-simplejwt", extras = ["crypto"], specifier = ">=5.5.1" },
     { name = "djangorestframework-stubs", specifier = ">=3.16.6" },
     { name = "dotenv", specifier = ">=0.9.9" },

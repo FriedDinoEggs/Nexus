@@ -12,6 +12,7 @@ dependencies = [
     "django-redis>=6.0.0",
     "django-stubs>=5.2.8",
     "djangorestframework>=3.16.1",
+    "djangorestframework-camel-case>=1.4.2",
     "djangorestframework-simplejwt[crypto]>=5.5.1",
     "djangorestframework-stubs>=3.16.6",
     "dotenv>=0.9.9",
