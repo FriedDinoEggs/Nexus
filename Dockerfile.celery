@@ -1,0 +1,45 @@
+# syntax=docker/dockerfile:1
+FROM python:3.14-slim-bookworm
+
+ARG GIT_TAG=unknown
+
+LABEL version=${GIT_TAG}
+LABEL maintainer="ttegg@dragonegg.cc"
+
+RUN echo "~~~Building version ${GIT_TAG}~~~"
+
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+  PYTHONUNBUFFERED=1 \
+  PYTHONFAULTHANDLER=1 \
+  DJANGO_SETTINGS_MODULE=config.settings \
+  UV_PROJECT_ENVIRONMENT=/usr/local \
+  UV_COMPILE_BYTECODE=1 \
+  UV_LINK_MODE=copy \
+  UV_NO_DEV=1
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+  && rm -rf /var/lib/apt/lists/*
+
+COPY pyproject.toml uv.lock ./
+RUN --mount=type=cache,target=/root/.cache/uv \
+  uv sync --frozen --no-install-project
+
+COPY . .
+
+RUN --mount=type=cache,target=/root/.cache/uv \
+  uv sync --frozen
+
+RUN groupadd --gid 1000 nexus && \
+  useradd --uid 1000 --gid 1000 --shell /bin/bash --create-home nexus && \
+  mkdir -p /app/logs /app/staticfiles /app/media && \
+  chown -R nexus:nexus /app
+
+USER nexus
+
+
+CMD ["celery", "-A", "config", "worker", "-l", "INFO", "--concurrency", "2"]
+

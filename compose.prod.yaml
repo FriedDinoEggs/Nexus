@@ -12,6 +12,7 @@ x-django-template: &django-base
     - DEBUG=False
     - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis_prod:6379/2
     - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis_prod:6379/3
+    - PROD_ALLOW_HOST=${PROD_ALLOW_HOST},django-engine1,django-engine2,api
 
   depends_on:
     postgres:
@@ -97,28 +98,123 @@ services:
         reservations:
           memory: 64M
 
-  django_engine1:
+  django-engine1:
     <<: *django-base
-    container_name: django_engine1
+    container_name: django-engine1
     ports:
       - "8001:8000"
 
-  django_engine2:
+  django-engine2:
     <<: *django-base
-    container_name: django_engine2
+    container_name: django-engine2
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
-      django_engine1:
+      django-engine1:
         condition: service_started
     ports:
       - "8002:8000"
 
+  celery_worker:
+    container_name: celery_worker
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: Dockerfile.celery
+      args:
+        - GIT_TAG=${GIT_TAG:-latest}
+    environment:
+      CELERY_BROKER_URL: redis://:${REDIS_PASSWORD}@redis_prod:6379/2
+      CELERY_RESULT_BACKEND: redis://:${REDIS_PASSWORD}@redis_prod:6379/3
+    image: celery-image:${GIT_TAG:-latest}
+    command: celery -A config worker -l INFO --concurrency 2
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "celery -A config inspect ping -d celery@$$HOSTNAME --timeout 5 || exit 1",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  # ── Monitoring ─────────────────────────────────────────────
+
+  redis-exporter:
+    image: oliver006/redis_exporter:latest
+    container_name: redis_exporter_prod
+    restart: unless-stopped
+    environment:
+      REDIS_ADDR: redis://redis_prod:6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?error}
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:latest
+    container_name: postgres_exporter_prod
+    restart: unless-stopped
+    environment:
+      DATA_SOURCE_URI: pg_db_prod:5432/${NEXUS_DB_NAME}?sslmode=disable
+      DATA_SOURCE_USER: postgres_exporter
+      DATA_SOURCE_PASS: ${POSTGRES_EXPORTER_PASSWORD:?error}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus_prod
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.prod.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=30d"
+      - "--web.enable-lifecycle"
+    depends_on:
+      - django-engine1
+      - django-engine2
+      - redis-exporter
+      - postgres-exporter
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana_prod
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:?error}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?error}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_IS_DEFAULT_PROD: "false"
+
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning/datasources/prometheus.prod.yml:/etc/grafana/provisioning/datasources/prometheus.yml:ro
+      - ./monitoring/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus
+
 volumes:
   pg_data:
     name: pg_data_${ENV}
-
   redis_data:
     name: redis_data_${ENV}
+  prometheus_data:
+    name: prometheus_data_${ENV}
+  grafana_data:
+    name: grafana_data_${ENV}

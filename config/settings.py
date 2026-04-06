@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django_prometheus',
     'rest_framework',
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
@@ -58,13 +59,17 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'django_prometheus.middleware.PrometheusBeforeMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware', ]
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'djangorestframework_camel_case.middleware.CamelCaseMiddleWare',
+    'django_prometheus.middleware.PrometheusAfterMiddleware',
+]
 
 ROOT_URLCONF = 'config.urls'
 
@@ -94,7 +99,7 @@ if os.getenv('CI'):
     
     DATABASES = {
         "default": {
-            "ENGINE": "django.db.backends.postgresql",
+            "ENGINE": "django_prometheus.db.backends.postgresql",
             "NAME": "test_db",
             "USER": "postgres",
             "PASSWORD": "postgres",
@@ -107,7 +112,7 @@ else:
     
     DATABASES = {
         "default": {
-            "ENGINE": "django.db.backends.postgresql",
+            "ENGINE": "django_prometheus.db.backends.postgresql",
             "NAME": os.environ['NEXUS_DB_NAME'],
             "USER": os.environ["NEXUS_DB_USER"],
             "PASSWORD": os.environ['NEXUS_DB_PWD'],
@@ -185,6 +190,18 @@ REST_FRAMEWORK = {
         'refresh': '10/minute',  # 限制refresh頻率，避免頻繁refresh造成DB壓力
     },
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+
+    'DEFAULT_RENDERER_CLASSES': (
+        'djangorestframework_camel_case.render.CamelCaseJSONRenderer',
+        'djangorestframework_camel_case.render.CamelCaseBrowsableAPIRenderer',
+    ),
+
+    'DEFAULT_PARSER_CLASSES': (
+        # If you use MultiPartFormParser or FormParser, we also have a camel case version
+        'djangorestframework_camel_case.parser.CamelCaseFormParser',
+        'djangorestframework_camel_case.parser.CamelCaseMultiPartParser',
+        'djangorestframework_camel_case.parser.CamelCaseJSONParser',
+    ),
 }
 
 SPECTACULAR_SETTINGS = {
@@ -340,5 +357,10 @@ LOGGING = {
         },
     },
 }
+
+# Django Prometheus Settings
+# Define latency buckets (in seconds) to enable p95/p99 histograms for DB queries
+PROMETHEUS_LATENCY_BUCKETS = (.008, .016, .032, .064, .128, .256, .512, 1.024, 2.048, 4.096, 8.192, 16.384, 32.768, 65.536, 131.072, 262.144, 524.288, 1048.576)
+PROMETHEUS_EXPORT_MIGRATIONS = False
 
 

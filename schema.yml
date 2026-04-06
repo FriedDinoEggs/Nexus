@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: Nexus Project API
   version: 0.0.1
-  description: 龍濱會員賽事系統
+  description: 會員賽事系統
 paths:
   /api/v1/event-teams/:
     get:
@@ -16,7 +16,7 @@ paths:
           type: integer
       tags:
       - v1
-      - Event Teams
+      - Events
       security:
       - JwtAuth: []
       - jwt_auth: []
@@ -31,7 +31,7 @@ paths:
       operationId: v1_event_teams_create
       tags:
       - v1
-      - Event Teams
+      - Events
       requestBody:
         content:
           application/json:
@@ -71,6 +71,7 @@ paths:
           type: integer
       tags:
       - v1
+      - Events
       security:
       - JwtAuth: []
       - jwt_auth: []
@@ -91,6 +92,7 @@ paths:
         required: true
       tags:
       - v1
+      - Events
       requestBody:
         content:
           application/json:
@@ -130,6 +132,7 @@ paths:
         required: true
       tags:
       - v1
+      - Events
       security:
       - JwtAuth: []
       - jwt_auth: []
@@ -156,6 +159,7 @@ paths:
         required: true
       tags:
       - v1
+      - Events
       requestBody:
         content:
           application/json:
@@ -194,6 +198,7 @@ paths:
         required: true
       tags:
       - v1
+      - Events
       requestBody:
         content:
           application/json:
@@ -231,6 +236,202 @@ paths:
         required: true
       tags:
       - v1
+      - Events
+      security:
+      - JwtAuth: []
+      - jwt_auth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/event-teams/{event_team_id}/team-matches/:
+    get:
+      operationId: v1_event_teams_team_matches_list
+      parameters:
+      - in: path
+        name: event_team_id
+        schema:
+          type: integer
+        description: 其中一隊伍的 ID
+        required: true
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - v1
+      - Matches
+      security:
+      - JwtAuth: []
+      - jwt_auth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedTeamMatchList'
+          description: ''
+    post:
+      operationId: v1_event_teams_team_matches_create
+      parameters:
+      - in: path
+        name: event_team_id
+        schema:
+          type: integer
+        description: 其中一隊伍的 ID
+        required: true
+      tags:
+      - v1
+      - Matches
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TeamMatchRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TeamMatchRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TeamMatchRequest'
+        required: true
+      security:
+      - JwtAuth: []
+      - jwt_auth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamMatch'
+          description: ''
+  /api/v1/event-teams/{event_team_id}/team-matches/{id}/:
+    get:
+      operationId: v1_event_teams_team_matches_retrieve
+      parameters:
+      - in: path
+        name: event_team_id
+        schema:
+          type: integer
+        description: 其中一隊伍的 ID
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this team match.
+        required: true
+      tags:
+      - v1
+      - Matches
+      security:
+      - JwtAuth: []
+      - jwt_auth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamMatch'
+          description: ''
+    put:
+      operationId: v1_event_teams_team_matches_update
+      parameters:
+      - in: path
+        name: event_team_id
+        schema:
+          type: integer
+        description: 其中一隊伍的 ID
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this team match.
+        required: true
+      tags:
+      - v1
+      - Matches
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TeamMatchRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TeamMatchRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TeamMatchRequest'
+        required: true
+      security:
+      - JwtAuth: []
+      - jwt_auth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamMatch'
+          description: ''
+    patch:
+      operationId: v1_event_teams_team_matches_partial_update
+      parameters:
+      - in: path
+        name: event_team_id
+        schema:
+          type: integer
+        description: 其中一隊伍的 ID
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this team match.
+        required: true
+      tags:
+      - v1
+      - Matches
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedTeamMatchRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedTeamMatchRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedTeamMatchRequest'
+      security:
+      - JwtAuth: []
+      - jwt_auth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamMatch'
+          description: ''
+    delete:
+      operationId: v1_event_teams_team_matches_destroy
+      parameters:
+      - in: path
+        name: event_team_id
+        schema:
+          type: integer
+        description: 其中一隊伍的 ID
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this team match.
+        required: true
+      tags:
+      - v1
+      - Matches
       security:
       - JwtAuth: []
       - jwt_auth: []
@@ -247,14 +448,9 @@ paths:
           type: integer
         description: A unique integer value identifying this event team.
         required: true
-      - in: path
-        name: pk
-        schema:
-          type: integer
-        required: true
       tags:
       - v1
-      - Event Teams
+      - Events
       security:
       - JwtAuth: []
       - jwt_auth: []
@@ -274,14 +470,9 @@ paths:
           type: integer
         description: A unique integer value identifying this event team.
         required: true
-      - in: path
-        name: pk
-        schema:
-          type: integer
-        required: true
       tags:
       - v1
-      - Event Teams
+      - Events
       requestBody:
         content:
           application/json:
@@ -313,14 +504,9 @@ paths:
           type: integer
         description: A unique integer value identifying this event team.
         required: true
-      - in: path
-        name: pk
-        schema:
-          type: integer
-        required: true
       tags:
       - v1
-      - Event Teams
+      - Events
       requestBody:
         content:
           application/json:
@@ -351,14 +537,9 @@ paths:
           type: integer
         description: A unique integer value identifying this event team.
         required: true
-      - in: path
-        name: pk
-        schema:
-          type: integer
-        required: true
       tags:
       - v1
-      - Event Teams
+      - Events
       security:
       - JwtAuth: []
       - jwt_auth: []
@@ -370,7 +551,7 @@ paths:
       operationId: v1_event_teams_me_retrieve
       tags:
       - v1
-      - Event Teams
+      - Events
       security:
       - JwtAuth: []
       - jwt_auth: []
@@ -384,8 +565,6 @@ paths:
   /api/v1/events/:
     get:
       operationId: v1_events_list
-      description: Authenticated users can list all events.
-      summary: List all events
       parameters:
       - name: page
         required: false
@@ -408,8 +587,6 @@ paths:
           description: ''
     post:
       operationId: v1_events_create
-      description: '**Requires: Event Manager or Super Admin group.**'
-      summary: Create a new event
       tags:
       - v1
       - Events
@@ -435,9 +612,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/Event'
           description: ''
-  /api/v1/events/{event_id}/teams/:
+  /api/v1/events/{event_id}/event-teams/:
     get:
-      operationId: v1_events_teams_list
+      operationId: v1_events_event_teams_list
       parameters:
       - in: path
         name: event_id
@@ -452,7 +629,7 @@ paths:
           type: integer
       tags:
       - v1
-      - Event Teams
+      - Events
       security:
       - JwtAuth: []
       - jwt_auth: []
@@ -464,7 +641,7 @@ paths:
                 $ref: '#/components/schemas/PaginatedEventTeamList'
           description: ''
     post:
-      operationId: v1_events_teams_create
+      operationId: v1_events_event_teams_create
       parameters:
       - in: path
         name: event_id
@@ -473,7 +650,7 @@ paths:
         required: true
       tags:
       - v1
-      - Event Teams
+      - Events
       requestBody:
         content:
           application/json:
@@ -496,9 +673,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/EventTeam'
           description: ''
-  /api/v1/events/{event_id}/teams/{id}/:
+  /api/v1/events/{event_id}/event-teams/{id}/:
     get:
-      operationId: v1_events_teams_retrieve
+      operationId: v1_events_event_teams_retrieve
       parameters:
       - in: path
         name: event_id
@@ -511,14 +688,9 @@ paths:
           type: integer
         description: A unique integer value identifying this event team.
         required: true
-      - in: path
-        name: pk
-        schema:
-          type: integer
-        required: true
       tags:
       - v1
-      - Event Teams
+      - Events
       security:
       - JwtAuth: []
       - jwt_auth: []
@@ -530,7 +702,7 @@ paths:
                 $ref: '#/components/schemas/EventTeam'
           description: ''
     put:
-      operationId: v1_events_teams_update
+      operationId: v1_events_event_teams_update
       parameters:
       - in: path
         name: event_id
@@ -543,14 +715,9 @@ paths:
           type: integer
         description: A unique integer value identifying this event team.
         required: true
-      - in: path
-        name: pk
-        schema:
-          type: integer
-        required: true
       tags:
       - v1
-      - Event Teams
+      - Events
       requestBody:
         content:
           application/json:
@@ -574,7 +741,7 @@ paths:
                 $ref: '#/components/schemas/EventTeam'
           description: ''
     patch:
-      operationId: v1_events_teams_partial_update
+      operationId: v1_events_event_teams_partial_update
       parameters:
       - in: path
         name: event_id
@@ -587,14 +754,9 @@ paths:
           type: integer
         description: A unique integer value identifying this event team.
         required: true
-      - in: path
-        name: pk
-        schema:
-          type: integer
-        required: true
       tags:
       - v1
-      - Event Teams
+      - Events
       requestBody:
         content:
           application/json:
@@ -617,7 +779,7 @@ paths:
                 $ref: '#/components/schemas/EventTeam'
           description: ''
     delete:
-      operationId: v1_events_teams_destroy
+      operationId: v1_events_event_teams_destroy
       parameters:
       - in: path
         name: event_id
@@ -630,23 +792,18 @@ paths:
           type: integer
         description: A unique integer value identifying this event team.
         required: true
-      - in: path
-        name: pk
-        schema:
-          type: integer
-        required: true
       tags:
       - v1
-      - Event Teams
+      - Events
       security:
       - JwtAuth: []
       - jwt_auth: []
       responses:
         '204':
           description: No response body
-  /api/v1/events/{event_id}/teams/me/:
+  /api/v1/events/{event_id}/event-teams/me/:
     get:
-      operationId: v1_events_teams_me_retrieve
+      operationId: v1_events_event_teams_me_retrieve
       parameters:
       - in: path
         name: event_id
@@ -655,7 +812,7 @@ paths:
         required: true
       tags:
       - v1
-      - Event Teams
+      - Events
       security:
       - JwtAuth: []
       - jwt_auth: []
@@ -666,23 +823,204 @@ paths:
               schema:
                 $ref: '#/components/schemas/EventTeam'
           description: ''
+  /api/v1/events/{event_id}/lunch-options/:
+    get:
+      operationId: v1_events_lunch_options_list
+      parameters:
+      - in: path
+        name: event_id
+        schema:
+          type: integer
+        required: true
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - v1
+      - Events
+      security:
+      - JwtAuth: []
+      - jwt_auth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedLunchOptionList'
+          description: ''
+    post:
+      operationId: v1_events_lunch_options_create
+      parameters:
+      - in: path
+        name: event_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      - Events
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LunchOptionRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LunchOptionRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LunchOptionRequest'
+        required: true
+      security:
+      - JwtAuth: []
+      - jwt_auth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LunchOption'
+          description: ''
+  /api/v1/events/{event_id}/lunch-options/{id}/:
+    get:
+      operationId: v1_events_lunch_options_retrieve
+      parameters:
+      - in: path
+        name: event_id
+        schema:
+          type: integer
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this lunch option.
+        required: true
+      tags:
+      - v1
+      - Events
+      security:
+      - JwtAuth: []
+      - jwt_auth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LunchOption'
+          description: ''
+    put:
+      operationId: v1_events_lunch_options_update
+      parameters:
+      - in: path
+        name: event_id
+        schema:
+          type: integer
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this lunch option.
+        required: true
+      tags:
+      - v1
+      - Events
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LunchOptionRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LunchOptionRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LunchOptionRequest'
+        required: true
+      security:
+      - JwtAuth: []
+      - jwt_auth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LunchOption'
+          description: ''
+    patch:
+      operationId: v1_events_lunch_options_partial_update
+      parameters:
+      - in: path
+        name: event_id
+        schema:
+          type: integer
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this lunch option.
+        required: true
+      tags:
+      - v1
+      - Events
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedLunchOptionRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedLunchOptionRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedLunchOptionRequest'
+      security:
+      - JwtAuth: []
+      - jwt_auth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LunchOption'
+          description: ''
+    delete:
+      operationId: v1_events_lunch_options_destroy
+      parameters:
+      - in: path
+        name: event_id
+        schema:
+          type: integer
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this lunch option.
+        required: true
+      tags:
+      - v1
+      - Events
+      security:
+      - JwtAuth: []
+      - jwt_auth: []
+      responses:
+        '204':
+          description: No response body
   /api/v1/events/{id}/:
     get:
       operationId: v1_events_retrieve
-      description: Authenticated users can view event details.
-      summary: Get event details
       parameters:
       - in: path
         name: id
         schema:
           type: integer
         description: A unique integer value identifying this event.
-        required: true
-      - in: path
-        name: pk
-        schema:
-          type: integer
-        description: Event ID
         required: true
       tags:
       - v1
@@ -699,20 +1037,12 @@ paths:
           description: ''
     put:
       operationId: v1_events_update
-      description: '**Requires: Event Manager or Super Admin group.**'
-      summary: Update an event
       parameters:
       - in: path
         name: id
         schema:
           type: integer
         description: A unique integer value identifying this event.
-        required: true
-      - in: path
-        name: pk
-        schema:
-          type: integer
-        description: Event ID
         required: true
       tags:
       - v1
@@ -741,20 +1071,12 @@ paths:
           description: ''
     patch:
       operationId: v1_events_partial_update
-      description: '**Requires: Event Manager or Super Admin group.**'
-      summary: Partially update an event
       parameters:
       - in: path
         name: id
         schema:
           type: integer
         description: A unique integer value identifying this event.
-        required: true
-      - in: path
-        name: pk
-        schema:
-          type: integer
-        description: Event ID
         required: true
       tags:
       - v1
@@ -782,8 +1104,6 @@ paths:
           description: ''
     delete:
       operationId: v1_events_destroy
-      description: '**Requires: Event Manager or Super Admin group.**'
-      summary: Delete an event
       parameters:
       - in: path
         name: id
@@ -791,15 +1111,590 @@ paths:
           type: integer
         description: A unique integer value identifying this event.
         required: true
-      - in: path
-        name: pk
+      tags:
+      - v1
+      - Events
+      security:
+      - JwtAuth: []
+      - jwt_auth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/health/:
+    get:
+      operationId: v1_health_retrieve
+      tags:
+      - v1
+      - Core
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: null
+          description: ''
+  /api/v1/match-templates/:
+    get:
+      operationId: v1_match_templates_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
         schema:
           type: integer
-        description: Event ID
+      tags:
+      - v1
+      - Events
+      security:
+      - JwtAuth: []
+      - jwt_auth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedEventMatchTemplateList'
+          description: ''
+    post:
+      operationId: v1_match_templates_create
+      tags:
+      - v1
+      - Events
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventMatchTemplateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/EventMatchTemplateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/EventMatchTemplateRequest'
+        required: true
+      security:
+      - JwtAuth: []
+      - jwt_auth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventMatchTemplate'
+          description: ''
+  /api/v1/match-templates/{id}/:
+    get:
+      operationId: v1_match_templates_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this event match template.
         required: true
       tags:
       - v1
       - Events
+      security:
+      - JwtAuth: []
+      - jwt_auth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventMatchTemplate'
+          description: ''
+    put:
+      operationId: v1_match_templates_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this event match template.
+        required: true
+      tags:
+      - v1
+      - Events
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventMatchTemplateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/EventMatchTemplateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/EventMatchTemplateRequest'
+        required: true
+      security:
+      - JwtAuth: []
+      - jwt_auth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventMatchTemplate'
+          description: ''
+    patch:
+      operationId: v1_match_templates_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this event match template.
+        required: true
+      tags:
+      - v1
+      - Events
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedEventMatchTemplateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedEventMatchTemplateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedEventMatchTemplateRequest'
+      security:
+      - JwtAuth: []
+      - jwt_auth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventMatchTemplate'
+          description: ''
+    delete:
+      operationId: v1_match_templates_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this event match template.
+        required: true
+      tags:
+      - v1
+      - Events
+      security:
+      - JwtAuth: []
+      - jwt_auth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/password-reset/:
+    post:
+      operationId: v1_password_reset_create
+      tags:
+      - v1
+      - Users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserPasswordResetRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UserPasswordResetRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UserPasswordResetRequest'
+        required: true
+      security:
+      - JwtAuth: []
+      - jwt_auth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserPasswordReset'
+          description: ''
+  /api/v1/password-reset/verify/:
+    post:
+      operationId: v1_password_reset_verify_create
+      tags:
+      - v1
+      - Users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserPasswordResetVerifyRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UserPasswordResetVerifyRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UserPasswordResetVerifyRequest'
+        required: true
+      security:
+      - JwtAuth: []
+      - jwt_auth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserPasswordResetVerify'
+          description: ''
+  /api/v1/team-matches/:
+    get:
+      operationId: v1_team_matches_list
+      parameters:
+      - in: path
+        name: event_team_id
+        schema:
+          type: integer
+        description: 其中一隊伍的 ID
+        required: true
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - v1
+      - Matches
+      security:
+      - JwtAuth: []
+      - jwt_auth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedTeamMatchList'
+          description: ''
+    post:
+      operationId: v1_team_matches_create
+      parameters:
+      - in: path
+        name: event_team_id
+        schema:
+          type: integer
+        description: 其中一隊伍的 ID
+        required: true
+      tags:
+      - v1
+      - Matches
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TeamMatchRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TeamMatchRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TeamMatchRequest'
+        required: true
+      security:
+      - JwtAuth: []
+      - jwt_auth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamMatch'
+          description: ''
+  /api/v1/team-matches/{id}/:
+    get:
+      operationId: v1_team_matches_retrieve
+      parameters:
+      - in: path
+        name: event_team_id
+        schema:
+          type: integer
+        description: 其中一隊伍的 ID
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this team match.
+        required: true
+      tags:
+      - v1
+      - Matches
+      security:
+      - JwtAuth: []
+      - jwt_auth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamMatch'
+          description: ''
+    put:
+      operationId: v1_team_matches_update
+      parameters:
+      - in: path
+        name: event_team_id
+        schema:
+          type: integer
+        description: 其中一隊伍的 ID
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this team match.
+        required: true
+      tags:
+      - v1
+      - Matches
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TeamMatchRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TeamMatchRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TeamMatchRequest'
+        required: true
+      security:
+      - JwtAuth: []
+      - jwt_auth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamMatch'
+          description: ''
+    patch:
+      operationId: v1_team_matches_partial_update
+      parameters:
+      - in: path
+        name: event_team_id
+        schema:
+          type: integer
+        description: 其中一隊伍的 ID
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this team match.
+        required: true
+      tags:
+      - v1
+      - Matches
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedTeamMatchRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedTeamMatchRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedTeamMatchRequest'
+      security:
+      - JwtAuth: []
+      - jwt_auth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamMatch'
+          description: ''
+    delete:
+      operationId: v1_team_matches_destroy
+      parameters:
+      - in: path
+        name: event_team_id
+        schema:
+          type: integer
+        description: 其中一隊伍的 ID
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this team match.
+        required: true
+      tags:
+      - v1
+      - Matches
+      security:
+      - JwtAuth: []
+      - jwt_auth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/teams/:
+    get:
+      operationId: v1_teams_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - v1
+      - Teams
+      security:
+      - JwtAuth: []
+      - jwt_auth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedTeamList'
+          description: ''
+    post:
+      operationId: v1_teams_create
+      tags:
+      - v1
+      - Teams
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TeamRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TeamRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TeamRequest'
+        required: true
+      security:
+      - JwtAuth: []
+      - jwt_auth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Team'
+          description: ''
+  /api/v1/teams/{id}/:
+    get:
+      operationId: v1_teams_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this team.
+        required: true
+      tags:
+      - v1
+      - Teams
+      security:
+      - JwtAuth: []
+      - jwt_auth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Team'
+          description: ''
+    put:
+      operationId: v1_teams_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this team.
+        required: true
+      tags:
+      - v1
+      - Teams
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TeamRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TeamRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TeamRequest'
+        required: true
+      security:
+      - JwtAuth: []
+      - jwt_auth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Team'
+          description: ''
+    patch:
+      operationId: v1_teams_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this team.
+        required: true
+      tags:
+      - v1
+      - Teams
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedTeamRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedTeamRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedTeamRequest'
+      security:
+      - JwtAuth: []
+      - jwt_auth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Team'
+          description: ''
+    delete:
+      operationId: v1_teams_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this team.
+        required: true
+      tags:
+      - v1
+      - Teams
       security:
       - JwtAuth: []
       - jwt_auth: []
@@ -838,13 +1733,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UserProfileRequest'
+              $ref: '#/components/schemas/UserRegistrationRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/UserProfileRequest'
+              $ref: '#/components/schemas/UserRegistrationRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/UserProfileRequest'
+              $ref: '#/components/schemas/UserRegistrationRequest'
         required: true
       security:
       - JwtAuth: []
@@ -854,7 +1749,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UserProfile'
+                $ref: '#/components/schemas/UserRegistration'
           description: ''
   /api/v1/users/{id}/:
     get:
@@ -989,6 +1884,31 @@ paths:
       responses:
         '200':
           description: No response body
+  /api/v1/users/login/google/:
+    post:
+      operationId: v1_users_login_google_create
+      tags:
+      - v1
+      - Users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GoogleLoginRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/GoogleLoginRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/GoogleLoginRequest'
+        required: true
+      security:
+      - JwtAuth: []
+      - jwt_auth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
   /api/v1/users/logout/:
     post:
       operationId: v1_users_logout_create
@@ -1022,6 +1942,32 @@ paths:
       tags:
       - v1
       - Users
+      security:
+      - JwtAuth: []
+      - jwt_auth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+          description: ''
+    patch:
+      operationId: v1_users_me_partial_update
+      tags:
+      - v1
+      - Users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedUserProfileRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedUserProfileRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedUserProfileRequest'
       security:
       - JwtAuth: []
       - jwt_auth: []
@@ -1091,8 +2037,68 @@ paths:
               schema:
                 $ref: '#/components/schemas/UserRegistration'
           description: ''
+  /api/v1/verification/send/:
+    post:
+      operationId: v1_verification_send_create
+      tags:
+      - v1
+      - Users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserVerificationRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UserVerificationRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UserVerificationRequestRequest'
+        required: true
+      security:
+      - JwtAuth: []
+      - jwt_auth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserVerificationRequest'
+          description: ''
+  /api/v1/verification/verify/:
+    post:
+      operationId: v1_verification_verify_create
+      tags:
+      - v1
+      - Users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserVerificationVerifySerilizerRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UserVerificationVerifySerilizerRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UserVerificationVerifySerilizerRequest'
+        required: true
+      security:
+      - JwtAuth: []
+      - jwt_auth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserVerificationVerifySerilizer'
+          description: ''
 components:
   schemas:
+    BlankEnum:
+      enum:
+      - ''
     Event:
       type: object
       properties:
@@ -1111,17 +2117,17 @@ components:
           type: string
           format: date-time
           nullable: true
+        all_day:
+          type: boolean
+          readOnly: true
         type:
           allOf:
           - $ref: '#/components/schemas/TypeEnum'
           title: Event Type
-        location:
-          type: integer
-          nullable: true
         location_name:
           type: string
-          description: Enter the location name (e.g., Banqiao Station)
-          readOnly: true
+          nullable: true
+          maxLength: 128
         event_teams:
           type: array
           items:
@@ -1131,12 +2137,96 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/LunchOption'
-          readOnly: true
       required:
+      - all_day
       - event_teams
       - id
-      - location_name
-      - lunch_options
+      - name
+    EventMatchTemplate:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          title: Template Name
+          maxLength: 128
+        creator:
+          type: integer
+          readOnly: true
+          nullable: true
+        creator_name:
+          type: string
+          readOnly: true
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/EventMatchTemplateItem'
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - creator
+      - creator_name
+      - id
+      - items
+      - name
+    EventMatchTemplateItem:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        number:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+        format:
+          allOf:
+          - $ref: '#/components/schemas/FormatEnum'
+          title: Match format
+        requirement:
+          type: string
+          title: Match requirement
+          description: Specify the age, gender, or category for this match (e.g.,
+            "30+ Men's Singles", "120+ Mixed Doubles").
+          maxLength: 32
+      required:
+      - id
+    EventMatchTemplateItemRequest:
+      type: object
+      properties:
+        number:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+        format:
+          allOf:
+          - $ref: '#/components/schemas/FormatEnum'
+          title: Match format
+        requirement:
+          type: string
+          title: Match requirement
+          description: Specify the age, gender, or category for this match (e.g.,
+            "30+ Men's Singles", "120+ Mixed Doubles").
+          maxLength: 32
+    EventMatchTemplateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          title: Template Name
+          maxLength: 128
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/EventMatchTemplateItemRequest'
+      required:
+      - items
       - name
     EventRequest:
       type: object
@@ -1158,17 +2248,86 @@ components:
           allOf:
           - $ref: '#/components/schemas/TypeEnum'
           title: Event Type
-        location:
-          type: integer
+        location_name:
+          type: string
           nullable: true
-        lunch_options_names:
+          minLength: 1
+          maxLength: 128
+        lunch_options:
           type: array
           items:
-            type: string
-            minLength: 1
+            $ref: '#/components/schemas/LunchOptionRequest'
+        rule_config:
+          allOf:
+          - $ref: '#/components/schemas/EventRuleConfigRequest'
           writeOnly: true
       required:
       - name
+      - rule_config
+    EventRuleConfig:
+      type: object
+      properties:
+        winning_sets:
+          type: integer
+          description: Number of sets to win a PlayerMatch
+        set_winning_points:
+          type: integer
+          description: Points needed to win a single set
+        use_deuce:
+          type: boolean
+          description: Whether to use deuce rule (must win by 2 points)
+        team_winning_points:
+          type: integer
+          description: Number of points (matches) to win a TeamMatch
+        play_all_sets:
+          type: boolean
+          description: Must play all sets, overrides winning_sets setting
+        play_all_matches:
+          type: boolean
+          description: Must play all matches, overrides team_winning_points setting
+        count_points_by_sets:
+          type: boolean
+          description: Whether to count set scores (e.g. 4:2) or win/loss (1:0)
+      required:
+      - count_points_by_sets
+      - play_all_matches
+      - play_all_sets
+      - set_winning_points
+      - team_winning_points
+      - use_deuce
+      - winning_sets
+    EventRuleConfigRequest:
+      type: object
+      properties:
+        winning_sets:
+          type: integer
+          description: Number of sets to win a PlayerMatch
+        set_winning_points:
+          type: integer
+          description: Points needed to win a single set
+        use_deuce:
+          type: boolean
+          description: Whether to use deuce rule (must win by 2 points)
+        team_winning_points:
+          type: integer
+          description: Number of points (matches) to win a TeamMatch
+        play_all_sets:
+          type: boolean
+          description: Must play all sets, overrides winning_sets setting
+        play_all_matches:
+          type: boolean
+          description: Must play all matches, overrides team_winning_points setting
+        count_points_by_sets:
+          type: boolean
+          description: Whether to count set scores (e.g. 4:2) or win/loss (1:0)
+      required:
+      - count_points_by_sets
+      - play_all_matches
+      - play_all_sets
+      - set_winning_points
+      - team_winning_points
+      - use_deuce
+      - winning_sets
     EventTeam:
       type: object
       properties:
@@ -1187,7 +2346,7 @@ components:
           type: string
           readOnly: true
         status:
-          $ref: '#/components/schemas/StatusEnum'
+          $ref: '#/components/schemas/EventTeamStatusEnum'
         coach:
           type: integer
           nullable: true
@@ -1210,7 +2369,6 @@ components:
           type: integer
         user:
           type: integer
-          readOnly: true
         user_full_name:
           type: string
           readOnly: true
@@ -1248,6 +2406,8 @@ components:
       properties:
         event_team:
           type: integer
+        user:
+          type: integer
         is_player:
           type: boolean
         is_coach:
@@ -1260,6 +2420,7 @@ components:
             $ref: '#/components/schemas/RegistrationLunchOrderRequest'
       required:
       - event_team
+      - user
     EventTeamRequest:
       type: object
       properties:
@@ -1268,7 +2429,7 @@ components:
         team:
           type: integer
         status:
-          $ref: '#/components/schemas/StatusEnum'
+          $ref: '#/components/schemas/EventTeamStatusEnum'
         coach:
           type: integer
           nullable: true
@@ -1278,6 +2439,33 @@ components:
       required:
       - event
       - team
+    EventTeamStatusEnum:
+      enum:
+      - PD
+      - AP
+      - RJ
+      type: string
+      description: |-
+        * `PD` - Pending
+        * `AP` - Approved
+        * `RJ` - Rejected
+    FormatEnum:
+      enum:
+      - S
+      - D
+      type: string
+      description: |-
+        * `S` - Single
+        * `D` - Double
+    GoogleLoginRequest:
+      type: object
+      properties:
+        code:
+          type: string
+          writeOnly: true
+          minLength: 1
+      required:
+      - code
     LunchOption:
       type: object
       properties:
@@ -1294,7 +2482,6 @@ components:
           maximum: 2147483647
           minimum: 0
       required:
-      - event
       - id
       - name
     LunchOptionRequest:
@@ -1311,8 +2498,27 @@ components:
           maximum: 2147483647
           minimum: 0
       required:
-      - event
       - name
+    MatchStatusEnum:
+      enum:
+      - SC
+      - IP
+      - CP
+      - XX
+      type: string
+      description: |-
+        * `SC` - Scheduled
+        * `IP` - In Progress
+        * `CP` - Completed
+        * `XX` - Cancelled
+    ModeEnum:
+      enum:
+      - verifyEmail
+      - resetPassword
+      type: string
+      description: |-
+        * `verifyEmail` - verify email
+        * `resetPassword` - reset password
     MyToeknRefresh:
       type: object
       properties:
@@ -1369,6 +2575,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Event'
+    PaginatedEventMatchTemplateList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/EventMatchTemplate'
     PaginatedEventTeamList:
       type: object
       required:
@@ -1415,6 +2644,75 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/EventTeamMember'
+    PaginatedLunchOptionList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/LunchOption'
+    PaginatedTeamList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Team'
+    PaginatedTeamMatchList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/TeamMatch'
     PaginatedUserProfileList:
       type: object
       required:
@@ -1438,6 +2736,18 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/UserProfile'
+    PatchedEventMatchTemplateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          title: Template Name
+          maxLength: 128
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/EventMatchTemplateItemRequest'
     PatchedEventRequest:
       type: object
       properties:
@@ -1458,19 +2768,25 @@ components:
           allOf:
           - $ref: '#/components/schemas/TypeEnum'
           title: Event Type
-        location:
-          type: integer
+        location_name:
+          type: string
           nullable: true
-        lunch_options_names:
+          minLength: 1
+          maxLength: 128
+        lunch_options:
           type: array
           items:
-            type: string
-            minLength: 1
+            $ref: '#/components/schemas/LunchOptionRequest'
+        rule_config:
+          allOf:
+          - $ref: '#/components/schemas/EventRuleConfigRequest'
           writeOnly: true
     PatchedEventTeamMemberRequest:
       type: object
       properties:
         event_team:
+          type: integer
+        user:
           type: integer
         is_player:
           type: boolean
@@ -1490,11 +2806,66 @@ components:
         team:
           type: integer
         status:
-          $ref: '#/components/schemas/StatusEnum'
+          $ref: '#/components/schemas/EventTeamStatusEnum'
         coach:
           type: integer
           nullable: true
         leader:
+          type: integer
+          nullable: true
+    PatchedLunchOptionRequest:
+      type: object
+      properties:
+        event:
+          type: integer
+        name:
+          type: string
+          minLength: 1
+          maxLength: 64
+        price:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+    PatchedTeamMatchRequest:
+      type: object
+      properties:
+        team_a:
+          type: integer
+          nullable: true
+        team_b:
+          type: integer
+          nullable: true
+        number:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+        date:
+          type: string
+          format: date
+          nullable: true
+        time:
+          type: string
+          format: time
+          nullable: true
+        status:
+          $ref: '#/components/schemas/MatchStatusEnum'
+        winner:
+          oneOf:
+          - $ref: '#/components/schemas/WinnerEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+        player_matches:
+          writeOnly: true
+    PatchedTeamRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        leader:
+          type: integer
+          nullable: true
+        coach:
           type: integer
           nullable: true
     PatchedUserProfileRequest:
@@ -1522,6 +2893,122 @@ components:
           type: string
           format: binary
           nullable: true
+    PlayerMatch:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        team_match:
+          type: integer
+          readOnly: true
+        number:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+          default: 0
+        date:
+          type: string
+          format: date
+          nullable: true
+        time:
+          type: string
+          format: time
+          nullable: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/MatchStatusEnum'
+          readOnly: true
+        winner:
+          allOf:
+          - $ref: '#/components/schemas/WinnerEnum'
+          readOnly: true
+        format:
+          allOf:
+          - $ref: '#/components/schemas/FormatEnum'
+          readOnly: true
+          title: Match format
+        requirement:
+          type: string
+          title: Match requirement
+          description: Specify the age, gender, or category for this match (e.g.,
+            "30+ Men's Singles", "120+ Mixed Doubles").
+          maxLength: 32
+        participants:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlayerMatchParticipant'
+      required:
+      - format
+      - id
+      - status
+      - team_match
+      - winner
+    PlayerMatchParticipant:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        player:
+          type: integer
+          nullable: true
+        player_name:
+          type: string
+          readOnly: true
+        player_name_backup:
+          type: string
+          maxLength: 128
+        side:
+          $ref: '#/components/schemas/SideEnum'
+        position:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+      required:
+      - id
+      - player_name
+    PlayerMatchParticipantRequest:
+      type: object
+      properties:
+        player:
+          type: integer
+          nullable: true
+        player_name_backup:
+          type: string
+          maxLength: 128
+        side:
+          $ref: '#/components/schemas/SideEnum'
+        position:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+    PlayerMatchRequest:
+      type: object
+      properties:
+        number:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+          default: 0
+        date:
+          type: string
+          format: date
+          nullable: true
+        time:
+          type: string
+          format: time
+          nullable: true
+        requirement:
+          type: string
+          title: Match requirement
+          description: Specify the age, gender, or category for this match (e.g.,
+            "30+ Men's Singles", "120+ Mixed Doubles").
+          maxLength: 32
+        participants:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlayerMatchParticipantRequest'
     RegistrationLunchOrder:
       type: object
       properties:
@@ -1556,16 +3043,133 @@ components:
           type: string
       required:
       - option
-    StatusEnum:
+    SideEnum:
       enum:
-      - PD
-      - AP
-      - RJ
+      - A
+      - B
       type: string
       description: |-
-        * `PD` - Pending
-        * `AP` - Approved
-        * `RJ` - Rejected
+        * `A` - Team A
+        * `B` - Team B
+    Team:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 255
+        leader:
+          type: integer
+          nullable: true
+        coach:
+          type: integer
+          nullable: true
+        members:
+          type: array
+          items:
+            type: integer
+          readOnly: true
+      required:
+      - id
+      - members
+      - name
+    TeamMatch:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        team_a:
+          type: integer
+          nullable: true
+        team_a_name:
+          type: string
+          readOnly: true
+        team_b:
+          type: integer
+          nullable: true
+        team_b_name:
+          type: string
+          readOnly: true
+        number:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+        date:
+          type: string
+          format: date
+          nullable: true
+        time:
+          type: string
+          format: time
+          nullable: true
+        status:
+          $ref: '#/components/schemas/MatchStatusEnum'
+        winner:
+          oneOf:
+          - $ref: '#/components/schemas/WinnerEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+        matches_info:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlayerMatch'
+          readOnly: true
+      required:
+      - id
+      - matches_info
+      - team_a
+      - team_a_name
+      - team_b
+      - team_b_name
+    TeamMatchRequest:
+      type: object
+      properties:
+        team_a:
+          type: integer
+          nullable: true
+        team_b:
+          type: integer
+          nullable: true
+        number:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+        date:
+          type: string
+          format: date
+          nullable: true
+        time:
+          type: string
+          format: time
+          nullable: true
+        status:
+          $ref: '#/components/schemas/MatchStatusEnum'
+        winner:
+          oneOf:
+          - $ref: '#/components/schemas/WinnerEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+        player_matches:
+          writeOnly: true
+      required:
+      - team_a
+      - team_b
+    TeamRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        leader:
+          type: integer
+          nullable: true
+        coach:
+          type: integer
+          nullable: true
+      required:
+      - name
     TokenBlacklistRequest:
       type: object
       properties:
@@ -1585,6 +3189,52 @@ components:
         * `TN` - Tournament
         * `LG` - League
         * `FR` - Friendly
+    UserPasswordReset:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+      required:
+      - email
+    UserPasswordResetRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 1
+      required:
+      - email
+    UserPasswordResetVerify:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        verification_code:
+          type: string
+      required:
+      - email
+      - verification_code
+    UserPasswordResetVerifyRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 1
+        password:
+          type: string
+          writeOnly: true
+          minLength: 1
+        verification_code:
+          type: string
+          minLength: 1
+      required:
+      - email
+      - password
+      - verification_code
     UserProfile:
       type: object
       properties:
@@ -1692,6 +3342,51 @@ components:
       - email
       - password
       - password_confirm
+    UserVerificationRequest:
+      type: object
+      properties:
+        mode:
+          $ref: '#/components/schemas/ModeEnum'
+      required:
+      - mode
+    UserVerificationRequestRequest:
+      type: object
+      properties:
+        mode:
+          $ref: '#/components/schemas/ModeEnum'
+      required:
+      - mode
+    UserVerificationVerifySerilizer:
+      type: object
+      properties:
+        mode:
+          $ref: '#/components/schemas/ModeEnum'
+        code:
+          type: string
+      required:
+      - code
+      - mode
+    UserVerificationVerifySerilizerRequest:
+      type: object
+      properties:
+        mode:
+          $ref: '#/components/schemas/ModeEnum'
+        code:
+          type: string
+          minLength: 1
+      required:
+      - code
+      - mode
+    WinnerEnum:
+      enum:
+      - A
+      - B
+      - D
+      type: string
+      description: |-
+        * `A` - Team_A
+        * `B` - Team_B
+        * `D` - Draw
   securitySchemes:
     JwtAuth:
       type: http

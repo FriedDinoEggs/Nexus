@@ -1,0 +1,63 @@
+info:
+  name: 26.createEvent
+  type: http
+  seq: 28
+
+http:
+  method: POST
+  url: 127.0.0.1:8000/api/v1/events/
+  auth:
+    type: bearer
+    token: "{{jwt_access}}"
+  body:
+    type: json
+    data: |-
+      {
+        "name": "Bruno Integration Event",
+        "type": "LG",
+        "location_name": "Bruno Test Court",
+        "rule_config": {
+          "winning_sets": 3,
+          "set_winning_points": 11,
+          "use_deuce": true,
+          "team_winning_points": 3,
+          "play_all_sets": false,
+          "play_all_matches": false,
+          "count_points_by_sets": false
+        }
+      }
+
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        const axios = require('axios');
+
+        const response = await axios.post(
+          'http://127.0.0.1:8000/api/v1/users/login/',
+          {
+            email: 'testEventManager@test.com',
+            password: 'testEventManager'
+          }
+        );
+        bru.setVar("jwt_access", response.data.access);
+    - type: after-response
+      code: |-
+        const data = res.getBody();
+        bru.setVar("event_id", data.id);
+        bru.setVar("jwt_access", null);
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: "201"
+    - expression: res.body.id
+      operator: isNumber
+    - expression: res.body.location_name
+      operator: eq
+      value: Bruno Test Court
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

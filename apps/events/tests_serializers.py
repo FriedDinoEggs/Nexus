@@ -73,6 +73,15 @@ class TestEventSerializer(APITestCase):
         data = {
             'name': 'New Tournament',
             'type': 'TN',
+            'rule_config': {
+                'winning_sets': 3,
+                'set_winning_points': 11,
+                'use_deuce': True,
+                'team_winning_points': 3,
+                'play_all_sets': False,
+                'play_all_matches': False,
+                'count_points_by_sets': False,
+            },
             'lunch_options': [
                 {'name': 'Standard', 'price': 80},
                 {'name': 'Vegetarian', 'price': 100},
@@ -93,6 +102,15 @@ class TestEventSerializer(APITestCase):
 
         data = {
             'name': 'Updated Event',
+            'rule_config': {
+                'winning_sets': 3,
+                'set_winning_points': 11,
+                'use_deuce': True,
+                'team_winning_points': 3,
+                'play_all_sets': False,
+                'play_all_matches': False,
+                'count_points_by_sets': False,
+            },
             'lunch_options': [
                 {'name': 'New Option 1', 'price': 90},
                 {'name': 'New Option 2', 'price': 110},

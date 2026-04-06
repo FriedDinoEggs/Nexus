@@ -1,0 +1,46 @@
+info:
+  name: 09.logout
+  type: http
+  seq: 11
+
+http:
+  method: POST
+  url: 127.0.0.1:8000/api/v1/users/logout/
+  auth:
+    type: bearer
+    token: "{{jwt_access}}"
+  body:
+    type: json
+    data: |-
+      {
+        "refresh": "{{jwt_refresh}}"
+      }
+
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        const axios = require('axios');
+
+        const response = await axios.post(
+          'http://127.0.0.1:8000/api/v1/users/login/',{
+            email: 'testAdmin@test.com',
+            password: 'testAdmin'
+          }
+        );
+        bru.setVar("jwt_access", response.data.access);
+        bru.setVar("jwt_refresh", response.data.refresh);
+    - type: after-response
+      code: |-
+        bru.setVar("jwt_access", null);
+        bru.setVar("jwt_refresh", null);
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: "200"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

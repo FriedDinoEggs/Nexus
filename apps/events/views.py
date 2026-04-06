@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.db.models import Q
 from drf_spectacular.utils import extend_schema
 from rest_framework import permissions, serializers, status, viewsets
 from rest_framework.decorators import action
@@ -13,6 +14,7 @@ from apps.users.permissions import (
 
 from .models import Event, EventMatchTemplate, EventTeam, EventTeamMember, LunchOption
 from .serializers import (
+    EventCalendarSerializer,
     EventMatchTemplateSerializer,
     EventSerializer,
     EventTeamMemberSerializer,
@@ -57,6 +59,28 @@ class EventViewSet(viewsets.ModelViewSet):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
             return [(IsEventManagerGroup | IsSuperAdminGroup)()]
         return super().get_permissions()
+
+    def get_queryset(self):
+        if self.request.query_params.get('calendar') == 'true':
+            qs = Event.objects.all()
+            start = self.request.query_params.get('start')
+            end = self.request.query_params.get('end')
+            if start and end:
+                qs = qs.filter(Q(start_time__lt=end) & Q(end_time__gt=start))
+            qs = qs.only('id', 'name', 'start_time', 'end_time')
+            return qs
+        return super().get_queryset()
+
+    def get_serializer_class(self):
+        if self.request.query_params.get('calendar') == 'true':
+            return EventCalendarSerializer
+        return super().get_serializer_class()
+
+    @property
+    def paginator(self):
+        if self.request.query_params.get('calendar') == 'true':
+            return None
+        return super().paginator
 
 
 @extend_schema(tags=['v1', 'Events'])
