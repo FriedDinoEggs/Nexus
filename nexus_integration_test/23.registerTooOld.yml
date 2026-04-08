@@ -21,7 +21,7 @@ runtime:
     - expression: res.status
       operator: eq
       value: "400"
-    - expression: res.body.date_of_birth
+    - expression: res.body.dateOfBirth
       operator: isNotEmpty
 
 settings:

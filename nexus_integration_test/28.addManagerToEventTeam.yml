@@ -35,11 +35,11 @@ runtime:
         const data = res.getBody();
         const eventTeamId = Number(bru.getVar("event_team_id"));
 
-        if (data.event_team !== eventTeamId) {
-          throw new Error(`Expected event_team ${eventTeamId}, got ${data.event_team}`);
+        if (data.eventTeam !== eventTeamId) {
+          throw new Error(`Expected eventTeam ${eventTeamId}, got ${data.eventTeam}`);
         }
-        if (data.is_player !== true) {
-          throw new Error('Expected is_player to be true');
+        if (data.isPlayer !== true) {
+          throw new Error('Expected isPlayer to be true');
         }
 
         bru.setVar("jwt_access", null);

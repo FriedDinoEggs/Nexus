@@ -35,7 +35,7 @@ runtime:
       value: "200"
     - expression: res.body.access
       operator: isNotEmpty
-    - expression: res.body.access_token
+    - expression: res.body.accessToken
       operator: isNotEmpty
 
 settings:

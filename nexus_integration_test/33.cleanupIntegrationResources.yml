@@ -30,8 +30,6 @@ runtime:
         const token = bru.getVar("jwt_access");
         const eventId = bru.getVar("event_id");
         const teamId = bru.getVar("team_id");
-        const templateId = bru.getVar("template_id");
-
         const headers = {
           Authorization: `Bearer ${token}`
         };
@@ -42,12 +40,6 @@ runtime:
 
         if (teamId) {
           await axios.delete(`http://127.0.0.1:8000/api/v1/teams/${teamId}/`, { headers });
-        }
-
-        if (templateId) {
-          await axios.delete(`http://127.0.0.1:8000/api/v1/match-templates/${templateId}/`, {
-            headers
-          });
         }
 
         bru.setVar("event_team_id", null);

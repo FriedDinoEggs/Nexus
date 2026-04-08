@@ -15,6 +15,7 @@ http:
       {
         "name": "Bruno Integration Event",
         "type": "LG",
+        "match_template": {{template_id}},
         "location_name": "Bruno Test Court",
         "rule_config": {
           "winning_sets": 3,
@@ -52,7 +53,7 @@ runtime:
       value: "201"
     - expression: res.body.id
       operator: isNumber
-    - expression: res.body.location_name
+    - expression: res.body.locationName
       operator: eq
       value: Bruno Test Court
 
