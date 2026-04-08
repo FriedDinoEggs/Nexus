@@ -2,7 +2,7 @@ from django.contrib.auth import get_user_model
 from rest_framework import serializers
 from rest_framework.test import APIRequestFactory, APITestCase
 
-from apps.events.models import Event, EventTeam, EventTeamMember, LunchOption
+from apps.events.models import Event, EventMatchTemplate, EventTeam, EventTeamMember, LunchOption
 from apps.events.serializers import (
     EventSerializer,
     EventTeamMemberSerializer,
@@ -69,10 +69,20 @@ class TestEventTeamMemberSerializer(APITestCase):
 
 
 class TestEventSerializer(APITestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            email='event-serializer@example.com', password='password', full_name='Event Serializer'
+        )
+        self.match_template = EventMatchTemplate.objects.create(
+            name='Serializer Template',
+            creator=self.user,
+        )
+
     def test_create_event_with_lunch_options(self):
         data = {
             'name': 'New Tournament',
             'type': 'TN',
+            'match_template': self.match_template.id,
             'rule_config': {
                 'winning_sets': 3,
                 'set_winning_points': 11,
@@ -102,6 +112,7 @@ class TestEventSerializer(APITestCase):
 
         data = {
             'name': 'Updated Event',
+            'match_template': self.match_template.id,
             'rule_config': {
                 'winning_sets': 3,
                 'set_winning_points': 11,
