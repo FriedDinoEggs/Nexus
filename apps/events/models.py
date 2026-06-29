@@ -21,6 +21,9 @@ class Event(SoftDeleteModel):
 
     name = models.CharField(max_length=128, verbose_name='Event name')
     teams = models.ManyToManyField(Team, through='EventTeam', related_name='events')
+    favorites = models.ManyToManyField(
+        User, through='EventFavorites', related_name='event_favorites'
+    )
     type = models.CharField(
         max_length=2,
         choices=TypeChoices.choices,
@@ -258,3 +261,18 @@ class EventMatchConfiguration(TimeStampedModel):
             'play_all_matches': self.play_all_matches,
             'count_points_by_sets': self.count_points_by_sets,
         }
+
+
+class EventFavorites(TimeStampedModel):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='user_favorites')
+    event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name='event_favorites')
+
+    class Meta:
+        ordering = ['created_at']
+        constraints = [
+            UniqueConstraint(
+                fields=['user', 'event'],
+                name='%(app_label)s_%(class)s_unique_user_event',
+                violation_error_message='The combination of Event and User must be unique',
+            )
+        ]
