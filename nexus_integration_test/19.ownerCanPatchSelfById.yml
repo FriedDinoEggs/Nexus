@@ -63,7 +63,7 @@ runtime:
     - expression: res.status
       operator: eq
       value: "200"
-    - expression: res.body.full_name
+    - expression: res.body.fullName
       operator: eq
       value: Owner Updated
     - expression: res.body.email

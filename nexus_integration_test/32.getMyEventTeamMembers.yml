@@ -33,12 +33,12 @@ runtime:
           throw new Error('Expected at least one event team member for user=me.');
         }
 
-        const target = results.find((item) => item.event_team === Number(bru.getVar("event_team_id")));
+        const target = results.find((item) => item.eventTeam === Number(bru.getVar("event_team_id")));
 
         if (!target) {
           throw new Error('Current user membership was not found in event team member list.');
         }
-        if (target.is_player !== true) {
+        if (target.isPlayer !== true) {
           throw new Error('Expected current user membership to be a player.');
         }
 

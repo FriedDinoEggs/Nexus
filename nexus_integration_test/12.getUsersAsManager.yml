@@ -27,8 +27,8 @@ runtime:
       code: |-
         const data = res.getBody();
         const users = data.results || data;
-        const adminUser = users.find((user) => user.full_name === 'SuperAdmin');
-        const memberUser = users.find((user) => user.full_name === 'Member');
+        const adminUser = users.find((user) => user.fullName === 'SuperAdmin');
+        const memberUser = users.find((user) => user.fullName === 'Member');
 
         if (!adminUser || adminUser.email !== 'testAdmin@test.com') {
           throw new Error('Manager should see admin email');

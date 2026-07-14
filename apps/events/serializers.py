@@ -96,18 +96,20 @@ class EventTeamMemberSerializer(serializers.ModelSerializer):
         model = EventTeamMember
         fields = [
             'id',
+            'status',
             'event_team',
             'user',
             'user_full_name',
             'event_name',
             'team_name',
+            'request_waitlist_only',
             'is_player',
             'is_coach',
             'is_staff',
             'lunch_orders',
             'created_at',
         ]
-        read_only_fields = ['user_full_name', 'event_name', 'team_name', 'created_at']
+        read_only_fields = ['status', 'user_full_name', 'event_name', 'team_name', 'created_at']
 
     @transaction.atomic
     def create(self, validated_data):
@@ -136,7 +138,10 @@ class EventTeamMemberSerializer(serializers.ModelSerializer):
 
         self._process_lunch_data(instance, lunch_orders_data)
 
-        return super().update(instance, validated_data)
+        try:
+            return super().update(instance, validated_data)
+        except DjangoValidationError as e:
+            raise serializers.ValidationError(detail=str(e)) from None
 
     def _process_lunch_data(self, member, lunch_orders_data):
         if lunch_orders_data:
@@ -160,7 +165,18 @@ class EventTeamSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = EventTeam
-        fields = ['id', 'event', 'event_name', 'team', 'team_name', 'status', 'coach', 'leader']
+        fields = [
+            'id',
+            'event',
+            'event_name',
+            'team',
+            'team_name',
+            'max_member',
+            'max_waitlist',
+            'status',
+            'coach',
+            'leader',
+        ]
 
     def create(self, validated_data):
         try:
@@ -171,6 +187,22 @@ class EventTeamSerializer(serializers.ModelSerializer):
             )
         except DjangoValidationError as e:
             raise serializers.ValidationError(detail=str(e)) from None
+
+    def validate(self, data):
+        if self.instance:
+            member_nums = self.instance.event_team_members.filter(status='RG').count()
+            waitlist_nums = self.instance.event_team_members.filter(status='WL').count()
+            if (max_member := data.get('max_member')) is not None and member_nums > max_member:
+                raise serializers.ValidationError(
+                    {'max_number': f'{member_nums} members have registerd so far.'}
+                )
+            if (
+                max_waitlist := data.get('max_waitlist')
+            ) is not None and waitlist_nums > max_waitlist:
+                raise serializers.ValidationError(
+                    {'max_waitlist': f'{waitlist_nums} members have registerd so far.'}
+                )
+        return super().validate(data)
 
 
 class LunchOptionSerializer(serializers.ModelSerializer):

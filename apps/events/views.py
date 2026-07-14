@@ -12,7 +12,14 @@ from apps.users.permissions import (
     IsSuperAdminGroup,
 )
 
-from .models import Event, EventMatchTemplate, EventTeam, EventTeamMember, LunchOption
+from .models import (
+    Event,
+    EventFavorites,
+    EventMatchTemplate,
+    EventTeam,
+    EventTeamMember,
+    LunchOption,
+)
 from .serializers import (
     EventCalendarSerializer,
     EventMatchTemplateSerializer,
@@ -54,6 +61,37 @@ class EventViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     lookup_url_kwarg = 'id'
+
+    @action(detail=True, methods=['post', 'delete'], url_path='favorite')
+    def favorite(self, request, id=None):
+        event = self.get_object()
+        user = request.user
+
+        if request.method == 'POST':
+            EventFavorites.objects.get_or_create(user=user, event=event)
+            return Response({'detail': 'Add to favorites'}, status=status.HTTP_200_OK)
+
+        elif request.method == 'DELETE':
+            EventFavorites.objects.filter(user=user, event=event).delete()
+            return Response({'detail': 'Removed from favorites'}, status=status.HTTP_200_OK)
+
+    @action(
+        detail=False,
+        methods=['get'],
+        url_path='favorites',
+        permission_classes=[permissions.IsAuthenticated],
+    )
+    def favorites(self, request):
+        user = request.user
+
+        favorite_events = Event.objects.filter(favorites=user)
+        page = self.paginate_queryset(favorite_events)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(favorite_events, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:

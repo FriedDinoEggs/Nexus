@@ -6,6 +6,7 @@ x-django-template: &django-base
       - GIT_TAG=${GIT_TAG:-latest}
   image: api-image:${GIT_TAG:-latest}
   environment:
+    - RUST_BACKTRACE=full
     - NEXUS_DB_HOST=pg_db_prod
     - NEXUS_DB_PORT=5432
     - REDIS_LOCATION=redis://:${REDIS_PASSWORD}@redis_prod:6379/1
@@ -13,6 +14,8 @@ x-django-template: &django-base
     - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis_prod:6379/2
     - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis_prod:6379/3
     - PROD_ALLOW_HOST=${PROD_ALLOW_HOST},django-engine1,django-engine2,api
+
+  restart: unless-stopped
 
   depends_on:
     postgres:

@@ -128,6 +128,34 @@ else:
     }
 
 
+
+STORAGES = {
+    "default": {
+        "BACKEND": "storages.backends.s3.S3Storage",
+        "OPTIONS": {
+            "endpoint_url": os.environ["R2_API"],
+            "access_key": os.environ["R2_ACCESS_KEY"],
+            "secret_key": os.environ["R2_SECRET_KEY"],
+            "bucket_name": os.environ["R2_BUCKET_NAME"],
+            "region_name": "auto",
+            
+            "querystring_auth": True,
+            "querystring_expire": 3600,  
+            "default_acl": None,
+
+            "file_overwrite": False,
+
+            "location": "static",
+            "querystring_auth": True,
+
+        },
+    },
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    },
+}
+
+
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
 
@@ -162,9 +190,9 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-STATIC_URL = 'static/'
-MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+# STATIC_URL = 'static/'
+# MEDIA_URL = '/media/'
+# MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
