@@ -79,6 +79,9 @@ class EventTeam(TimeStampedModel):
         User, on_delete=models.SET_NULL, null=True, blank=True, related_name='led_event_teams'
     )
 
+    max_member = models.IntegerField(default=8, null=False, blank=True)
+    max_waitlist = models.IntegerField(default=4, null=False, blank=True)
+
     status = models.CharField(
         max_length=2, choices=StatusChoices.choices, default=StatusChoices.APPROVED
     )
@@ -97,10 +100,16 @@ class EventTeam(TimeStampedModel):
 
 
 class EventTeamMember(TimeStampedModel):
+    class Status(models.TextChoices):
+        REGULAR = 'RG', 'REGULAR'
+        WAITLIST = 'WL', 'WAITLIST'
+
+    status = models.CharField(max_length=2, choices=Status, default=Status.REGULAR)
     event_team = models.ForeignKey(
         EventTeam, on_delete=models.CASCADE, related_name='event_team_members'
     )
     user = models.ForeignKey(User, on_delete=models.CASCADE)
+    request_waitlist_only = models.BooleanField(default=False, blank=True)
     is_player = models.BooleanField(default=False, blank=True)
     is_coach = models.BooleanField(default=False, blank=True)
     is_staff = models.BooleanField(default=False, blank=True)
@@ -130,6 +139,39 @@ class EventTeamMember(TimeStampedModel):
             .exists()
         ):
             raise ValidationError('User is already registered in another team for this event.')
+
+    def save(self, *args, **kwargs):
+        event_team = self.event_team
+        max_member = event_team.max_member
+        max_waitlist = event_team.max_waitlist
+        current_regular_count = event_team.event_team_members.filter(status='RG').count()
+        current_waitlist_count = event_team.event_team_members.filter(status='WL').count()
+
+        if self.pk is None:
+            if not self.request_waitlist_only:
+                if current_regular_count < max_member:
+                    self.status = self.Status.REGULAR
+                elif current_waitlist_count < max_waitlist:
+                    self.status = self.Status.WAITLIST
+                else:
+                    raise ValidationError('The regular and waiting list is full')
+            else:
+                if current_waitlist_count >= max_waitlist:
+                    raise ValidationError('The waiting list is full')
+                self.status = self.Status.WAITLIST
+
+        else:
+            current_status = self.status
+            if self.request_waitlist_only and current_status != self.Status.WAITLIST:
+                if current_waitlist_count < max_waitlist:
+                    self.status = self.Status.WAITLIST
+                else:
+                    raise ValidationError('The waiting list is full')
+            elif not self.request_waitlist_only and current_status != self.Status.REGULAR:
+                if current_regular_count < max_member:
+                    self.status = self.Status.REGULAR
+
+        super().save(*args, **kwargs)
 
 
 class LunchOption(TimeStampedModel):
