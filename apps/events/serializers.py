@@ -7,6 +7,7 @@ from apps.core.models import Location
 
 from .models import (
     Event,
+    EventAttachments,
     EventMatchTemplate,
     EventMatchTemplateItem,
     EventTeam,
@@ -213,6 +214,21 @@ class LunchOptionSerializer(serializers.ModelSerializer):
         fields = ['id', 'event', 'name', 'price']
 
 
+class EventAttachmentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EventAttachments
+        fields = ['id', 'file', 'original_name', 'event']
+        extra_kwargs = {'original_name': {'required': False, 'allow_blank': True}}
+
+    def validate(self, attrs):
+        file_obj = attrs.get('file')
+
+        if not attrs.get('original_name', None) and file_obj:
+            attrs['original_name'] = file_obj.name
+
+        return super().validate(attrs)
+
+
 class EventSerializer(serializers.ModelSerializer):
     event_teams = EventTeamSerializer(many=True, read_only=True)
     lunch_options = LunchOptionSerializer(many=True, required=False)
@@ -220,6 +236,10 @@ class EventSerializer(serializers.ModelSerializer):
     location_name = serializers.CharField(required=False, allow_null=True, max_length=128)
     match_template = serializers.PrimaryKeyRelatedField(
         queryset=EventMatchTemplate.objects.all(), required=True, write_only=True
+    )
+    event_attachments = EventAttachmentSerializer(many=True, read_only=True)
+    attachment_ids = serializers.PrimaryKeyRelatedField(
+        queryset=EventAttachments.objects.all(), many=True, required=False, write_only=True
     )
 
     class Meta:
@@ -232,6 +252,8 @@ class EventSerializer(serializers.ModelSerializer):
             'all_day',
             'type',
             'location_name',
+            'event_attachments',
+            'attachment_ids',
             'event_teams',
             'lunch_options',
             'rule_config',
@@ -255,6 +277,7 @@ class EventSerializer(serializers.ModelSerializer):
         rule_config_data = validated_data.pop('rule_config', None)
         location_name = validated_data.pop('location_name', None)
         match_template = validated_data.pop('match_template', None)
+        attachmet_ids = validated_data.pop('attachmet_ids', None)
 
         if location_name:
             location, _ = Location.objects.get_or_create(name=location_name)
@@ -279,6 +302,12 @@ class EventSerializer(serializers.ModelSerializer):
             if rule_config_data:
                 self._apply_event_config(event, rule_config_data, match_template)
                 # event.match_config.refresh_from_db()
+                #
+
+            if attachmet_ids:
+                EventAttachments.objects.filter(id__in=[att.id for att in attachmet_ids]).update(
+                    event=event
+                )
 
             return event
         except DjangoValidationError as e:
@@ -290,6 +319,7 @@ class EventSerializer(serializers.ModelSerializer):
         rule_config_data = validated_data.pop('rule_config', None)
         location_name = validated_data.pop('location_name', None)
         match_template = validated_data.pop('match_template', None)
+        attachmet_ids = validated_data.pop('attachment_ids', None)
 
         if location_name is not None:
             if location_name:
@@ -310,6 +340,12 @@ class EventSerializer(serializers.ModelSerializer):
 
         if rule_config_data:
             self._apply_event_config(instance, rule_config_data, match_template)
+
+        if attachmet_ids:
+            EventAttachments.objects.filter(event=instance).update(event=None)
+            EventAttachments.objects.filter(id__in=[att.id for att in attachmet_ids]).update(
+                event=instance
+            )
 
         return instance
 

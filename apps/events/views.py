@@ -1,7 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.db.models import Q
 from drf_spectacular.utils import extend_schema
-from rest_framework import permissions, serializers, status, viewsets
+from rest_framework import parsers, permissions, serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.views import Response
 
@@ -14,6 +14,7 @@ from apps.users.permissions import (
 
 from .models import (
     Event,
+    EventAttachments,
     EventFavorites,
     EventMatchTemplate,
     EventTeam,
@@ -21,6 +22,7 @@ from .models import (
     LunchOption,
 )
 from .serializers import (
+    EventAttachmentSerializer,
     EventCalendarSerializer,
     EventMatchTemplateSerializer,
     EventSerializer,
@@ -55,7 +57,7 @@ class EventViewSet(viewsets.ModelViewSet):
     queryset = (
         Event.objects.all()
         .select_related('location')
-        .prefetch_related('teams', 'event_teams', 'lunch_options')
+        .prefetch_related('teams', 'event_teams', 'lunch_options', 'event_attachments')
     )
     serializer_class = EventSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -282,3 +284,10 @@ class EventTeamMemberViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save()
+
+
+class EventAttachmentViewSet(viewsets.ModelViewSet):
+    queryset = EventAttachments.objects.all()
+    parser_classes = [parsers.MultiPartParser, parsers.FormParser]
+    serializer_class = EventAttachmentSerializer
+    permission_classes = [permissions.IsAuthenticated, IsSuperAdminGroup | IsEventManagerGroup]
