@@ -3,6 +3,7 @@ from rest_framework.routers import DefaultRouter
 from rest_framework_nested import routers
 
 from apps.events.views import (
+    EventAttachmentViewSet,
     EventTeamMemberViewSet,
     EventTeamViewSet,
     EventViewSet,
@@ -15,6 +16,7 @@ router = DefaultRouter()
 router.register(r'events', EventViewSet, basename='events')
 router.register(r'event-teams', EventTeamViewSet, basename='event-teams')
 router.register(r'match-templates', MatchTemplateViewSet, basename='match-templates')
+router.register(r'event-attachments', EventAttachmentViewSet, basename='event-attachments')
 
 event_team_router = routers.NestedSimpleRouter(router, r'events', lookup='event')
 event_team_router.register(r'event-teams', EventTeamViewSet, basename='event-teams-nested')

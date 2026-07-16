@@ -1,3 +1,5 @@
+import os
+import uuid
 from datetime import time, timedelta
 
 from django.contrib.auth import get_user_model
@@ -318,3 +320,20 @@ class EventFavorites(TimeStampedModel):
                 violation_error_message='The combination of Event and User must be unique',
             )
         ]
+
+
+def attachment_directory_path(instance, filename):
+    filename, ext = os.path.splittext(filename)
+    filename = f'{filename}_{uuid.uuid4()}.{ext}'
+
+    return f'attachment/%Y/{filename}'
+
+
+class EventAttachments(TimeStampedModel):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
+    file = models.FileField(upload_to=attachment_directory_path)
+    original_name = models.CharField(max_length=255)
+
+    event = models.ForeignKey(
+        Event, on_delete=models.CASCADE, null=True, blank=True, related_name='event_attachments'
+    )
