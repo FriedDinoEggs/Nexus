@@ -10,7 +10,7 @@ from rest_framework_simplejwt.serializers import (
     TokenRefreshSerializer,
 )
 
-from apps.users.models import ScocialAccount
+from apps.users.models import ScocialAccount, UserSetting
 from apps.users.services import UserVerificationServices
 from apps.users.services.social_services import SocialServices
 
@@ -272,3 +272,9 @@ class GoogleLoginSerializer(serializers.Serializer):
             social_account.save(update_fields=['last_login'])
 
         return user
+
+
+class UserSettingSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserSetting
+        fields = ['theme', 'language', 'sidebar_collapsed']

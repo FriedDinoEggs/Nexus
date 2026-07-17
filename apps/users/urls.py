@@ -9,6 +9,7 @@ from .views import (
     UserProfileViewSet,
     UserRegisterView,
     UserResetPasswordViewSet,
+    UserSettingViewSet,
     UserVerificationViewSet,
 )
 
@@ -17,6 +18,7 @@ router = DefaultRouter()
 router.register(r'users', UserProfileViewSet, basename='users')
 router.register(r'verification', UserVerificationViewSet, basename='email-verification')
 router.register(r'password-reset', UserResetPasswordViewSet, basename='password-reset')
+router.register(r'user-settings', UserSettingViewSet, basename='user-settings')
 
 urlpatterns = [
     path('users/login/', TokenObtainPairView.as_view(), name='login'),
