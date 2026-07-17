@@ -12,6 +12,7 @@ from rest_framework.views import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenBlacklistView, TokenRefreshView
 
+from apps.users.models import UserSetting
 from apps.users.throttles import EmailVerificationThrottle, ResetPasswordThrottle
 
 from .authentication import CustomJWTAuthentication
@@ -23,6 +24,7 @@ from .serializers import (
     UserPasswordResetVerifySerializer,
     UserProfileSerializer,
     UserRegistrationSerializer,
+    UserSettingSerializer,
     UserVerificationRequestSerializer,
     UserVerificationVerifySerilizer,
 )
@@ -295,3 +297,36 @@ class IPBaseThrottle(SimpleRateThrottle):
 class CustomTokenRefreshView(TokenRefreshView):
     serializer_class = MyToeknRefreshSerializer
     throttle_classes = [IPBaseThrottle]
+
+
+class UserSettingViewSet(viewsets.ModelViewSet):
+    queryset = UserSetting.objects.all()
+    serializer_class = UserSettingSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+
+        base_queryset = UserSetting.objects.all().select_related('user')
+
+        user_group_name = user.groups.values_list('name', flat=True)
+
+        if 'SuperAdmin' in user_group_name:
+            return base_queryset
+
+        return base_queryset.filter(user=user.id)
+
+    @action(detail=False, methods=['get', 'patch', 'put'], url_path='me')
+    def me(self, request):
+        user_setting, created = UserSetting.objects.get_or_create(user=request.user)
+
+        if request.method == 'GET':
+            serializer = self.get_serializer(user_setting)
+            return Response(serializer.data)
+
+        partial = request.method == 'PATCH'
+        serializer = self.get_serializer(user_setting, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        return Response(serializer.data)

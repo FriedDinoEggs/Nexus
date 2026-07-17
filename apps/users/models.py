@@ -3,6 +3,8 @@ from django.contrib.auth import get_user_model
 from django.db import models
 from django.utils import timezone
 
+from apps.core.models import TimeStampedModel
+
 # Create your models here.
 
 User = get_user_model()
@@ -51,3 +53,17 @@ class ScocialAccount(models.Model):
 
     def __str__(self):
         return f'{self.user}_{self.social_type}'
+
+
+class UserSetting(TimeStampedModel):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='user_settings')
+
+    theme = models.CharField(max_length=16, default='light', null=False, blank=True)
+    language = models.CharField(max_length=32, default='zh-Hant', null=False, blank=True)
+    sidebar_collapsed = models.BooleanField(default=False, null=False, blank=True)
+
+    class Meta:
+        ordering = ['id']
+
+    def __str__(self):
+        return f"{self.user.full_name}'s setting"
