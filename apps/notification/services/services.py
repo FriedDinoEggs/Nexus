@@ -4,10 +4,9 @@ import uuid
 from datetime import timedelta
 
 import django_redis
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 
-from apps.events.models import Event
-from apps.events.serializers import EventSerializer
 from apps.notification.models import Notification, NotificationLog
 from apps.notification.serializers import NotificationSerializer
 
@@ -21,6 +20,7 @@ class NotificationServices:
         try:
             redis_conn = django_redis.get_redis_connection('default')
             redis_conn.set(f'sse_ticket:{ticket}', user_id, ex=61)
+
         except Exception as e:
             logger.error(f'redis connection fault: {e}')
 
@@ -32,58 +32,61 @@ class NotificationServices:
 
         try:
             redis_conn = django_redis.get_redis_connection('default')
-            payload = json.dumps(dict(serializer.data))
-            channel_name = f'user_channel_{to}'
+            payload = dict(serializer.data)
+            if 'payload' in payload:
+                payload['payload'] = json.dumps(payload['payload'])
+            stream_name = f'user_notification_stream:{to}'
 
-            if (
-                0 == redis_conn.publish(channel_name, payload)
-                and notification.type != notification.Type.ALERT
-            ):
-                redis_conn.lpush(channel_name, payload)
-                redis_conn.expire(channel_name, 60)  # 60 secs
+            redis_conn.xadd(stream_name, payload, id='*', maxlen=50, approximate=True)
 
         except Exception as e:
             logger.error(f'redis brodcast to {to} error: {e}')
 
     @staticmethod
-    def send_idempotent_notification(
-        target_type,
-        target_object,
-        target_key,
+    def send_notification(
         user_id,
         title,
         body,
-        payload,
+        payload: dict,
         channel=Notification.Channel.WEB,
         type=Notification.Type.ALERT,
         status=Notification.Status.UNREAD,
+        idempotent=False,
+        target_type='',
+        target_object='',
+        target_key='',
     ) -> Notification | None:
-        str_target_id = str(target_object.id)
+        with transaction.atomic():
+            if idempotent:
+                str_target_id = str(target_object.id)
+                try:
+                    log, created = NotificationLog.objects.get_or_create(
+                        user_id=user_id,
+                        target_type=target_type,
+                        target_id=str_target_id,
+                        target_key=target_key,
+                    )
+                except IntegrityError:
+                    created = False
 
-        log, created = NotificationLog.objects.get_or_create(
-            user_id=user_id,
-            target_type=target_type,
-            target_id=str_target_id,
-            target_key=target_key,
-        )
+                if not created:
+                    return None
 
-        if not created:
-            return None
+            notif = Notification.objects.create(
+                user_id=user_id,
+                title=title,
+                body=body,
+                type=type,
+                channel=channel,
+                status=status,
+                payload=payload,
+            )
+            print(notif.__dict__)
 
-        notif = Notification(
-            user_id=user_id,
-            title=title,
-            body=body,
-            type=type,
-            channel=channel,
-            status=status,
-            payload=payload,
-        )
+            transaction.on_commit(lambda: NotificationServices.broadcast_to_user(user_id, notif))
 
-        notif.save()
-
-        NotificationServices.broadcast_to_user(user_id, notif)
-        return notif
+            return notif
+        return None
 
     @staticmethod
     def __send_undelted_notification(user_id):
@@ -94,6 +97,9 @@ class NotificationServices:
 
     @staticmethod
     def __send_upcoming_Event(user_id):
+        from apps.events.models import Event
+        from apps.events.serializers import EventSerializer
+
         now = timezone.now()
         seven_days_later = now + timedelta(days=7)
 
@@ -110,14 +116,13 @@ class NotificationServices:
                 target_object=event,
                 target_key='upcoming_event',
                 user_id=user_id,
-                title='upcomping event',
+                title='upcoming event',
                 body=body,
                 type=Notification.Type.STATUS_BAR,
                 channel=Notification.Channel.WEB,
                 status=Notification.Status.UNREAD,
-                payload=json.dumps(dict(payload)),
+                payload=dict(payload),
             )
-            # NotificationServices.broadcast_to_user(user_id, noti)
 
     @staticmethod
     def send_init_notifications(user_id):

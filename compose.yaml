@@ -39,12 +39,13 @@ services:
         --requirepass ${REDIS_PASSWORD:?error}
         --appendonly yes
         --appendfsync everysec
+        --auto-aof-rewrite-min-size 16mb
+        --auto-aof-rewrite-percentage 50
+        --aof-use-rdb-preamble yes
         --maxmemory 128mb
         --maxmemory-policy allkeys-lru
         --bind 0.0.0.0
-        --save 900 1
-        --save 300 10
-        --save 60 10000
+        --save ""
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -97,6 +98,56 @@ services:
     depends_on:
       - postgres
       - redis
+
+  sse-server:
+    container_name: sse-server
+    build:
+      context: ./sse-go-pusher
+      dockerfile: Dockerfile.sse-server
+    image: sse-server-api-image
+    ports:
+      - 8080:8080
+    environment:
+      REDIS_HOST: nexus_redis
+      REDIS_PORT: ${REDIS_PORT:?error}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?error}
+      REDIS_DB: ${REDIS_DB:?error}
+      NEXUS_DB_NAME: ${NEXUS_DB_NAME:?error}
+      NEXUS_DB_USER: ${NEXUS_DB_USER:?error}
+      NEXUS_DB_PWD: ${NEXUS_DB_PWD:?error}
+      NEXUS_DB_HOST: nexus_pg_db
+      NEXUS_DB_PORT: 5432
+      GIN_MODE: release
+      PORT: 8080
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:8080/api/v1/notification/stream/health/",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    depends_on:
+      - redis
+      - postgres
+    restart: unless-stopped
+    sysctls:
+      net.core.somaxconn: 1024
+    ulimits:
+      nofile:
+        soft: 65535
+        hard: 65535
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
 
   # ── Monitoring ─────────────────────────────────────────────
   redis-exporter:

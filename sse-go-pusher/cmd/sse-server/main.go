@@ -1,30 +1,87 @@
 package main
 
 import (
+	"context"
 	"fmt"
-	"log"
-	"net/http"
+	"log/slog"
 	"os"
 	"strconv"
+	"time"
 
 	"sse-go-pusher/internal/app/delivery"
+	"sse-go-pusher/internal/app/repositories/postgres"
 	"sse-go-pusher/internal/app/service"
 	"sse-go-pusher/internal/pkg/queue"
+	"sse-go-pusher/internal/pkg/stream"
 
 	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 	"github.com/redis/go-redis/v9"
 )
 
-type Ticket struct {
-	Ticket string `form:"ticket" binding:"required,uuid"`
-}
-
-var rdb *redis.Client
+var (
+	rdb    *redis.Client
+	pgPool *pgxpool.Pool
+)
 
 func main() {
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelDebug,
+	}))
+	slog.SetDefault(logger)
+
+	slog.Info("Starting SSE Push Server...")
+
+	if err := InitDB(context.Background()); err != nil {
+		slog.Error("Database initialization failed", "error", err)
+		os.Exit(1)
+	}
+	defer func() {
+		if rdb != nil {
+			rdb.Close()
+		}
+		if pgPool != nil {
+			pgPool.Close()
+		}
+		slog.Info("Database and Redis connections closed")
+	}()
+
+	var streamReader stream.StreamReader = stream.NewRedisStream(rdb)
+	repo := postgres.NewNotificationRepository(pgPool)
+	notiService := service.NewNotificationService(repo, streamReader)
+	sseHandler := delivery.NewSSEHandler(notiService)
+
+	router := gin.New()
+	router.Use(gin.Recovery())
+
+	v1 := router.Group("api/v1")
+	{
+		notification := v1.Group("/notification")
+		{
+
+			notification.GET("/stream/health/", func(c *gin.Context) { c.String(200, "OK") })
+			notificationGroup := notification.Group("/stream", delivery.AuthMiddleware(rdb))
+			notificationGroup.GET("/", sseHandler.StreamNotifications)
+		}
+	}
+	// v1.Use(delivery.AuthMiddleware(rdb))
+	// {
+	// 	v1.GET("notification/stream/", sseHandler.StreamNotifications)
+	//
+	//
+	// 	v1.GET("health/", func(c *gin.Context) { c.String(200, "OK") })
+	// }
+
+	slog.Info("HTTP server running")
+	if err := router.Run(); err != nil {
+		slog.Error("Server failed to run", "error", err)
+	}
+}
+
+func InitDB(ctx context.Context) error {
 	if err := godotenv.Load(); err != nil {
-		log.Fatal("error loading .env file")
+		slog.Warn("No .env file found or failed to load, falling back to system environment variables", "error", err)
 	}
 
 	cfg := queue.RedisConfig{
@@ -32,6 +89,7 @@ func main() {
 		Pwd:  os.Getenv("REDIS_PASSWORD"),
 		DB:   getEnvInt("REDIS_DB", 0),
 	}
+
 	rdb = redis.NewClient(&redis.Options{
 		Addr:         cfg.Addr,
 		Password:     cfg.Pwd,
@@ -39,22 +97,37 @@ func main() {
 		PoolSize:     100,
 		MinIdleConns: 10,
 	})
-	defer rdb.Close()
+	slog.Info("Redis client configured", "addr", cfg.Addr, "db", cfg.DB)
 
-	var mq queue.MessageQueue = queue.NewRedisQueue(rdb)
+	connStr := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable",
+		os.Getenv("NEXUS_DB_USER"), os.Getenv("NEXUS_DB_PWD"),
+		os.Getenv("NEXUS_DB_HOST"), os.Getenv("NEXUS_DB_PORT"),
+		os.Getenv("NEXUS_DB_NAME"),
+	)
+	config, err := pgxpool.ParseConfig(connStr)
+	if err != nil {
+		return fmt.Errorf("failed to parse connection string: %w", err)
+	}
+	config.MaxConns = 20
+	config.MinConns = 5
+	config.MaxConnIdleTime = 30 * time.Minute
+	config.MaxConnLifetime = 1 * time.Hour
+	config.HealthCheckPeriod = 1 * time.Minute
 
-	notiServeice := service.NewNotificationService(mq)
-	sseHandler := delivery.NewSSEHandler(notiServeice)
-
-	router := gin.Default()
-
-	v1 := router.Group("api/v1")
-	v1.Use(TicketAuthMiddleware(rdb))
-	{
-		v1.GET("notification/stream/", sseHandler.StreamNotifications)
+	pgPool, err = pgxpool.NewWithConfig(context.Background(), config)
+	if err != nil {
+		return fmt.Errorf("failed to create pgxpool: %w", err)
 	}
 
-	router.Run()
+	pingCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+
+	if err := pgPool.Ping(pingCtx); err != nil {
+		return fmt.Errorf("postgres connection ping failed: %w", err)
+	}
+
+	slog.Info("PostgreSQL connection pool initialized and pinged successfully")
+	return nil
 }
 
 func getEnvInt(key string, defaultVal int) int {
@@ -62,31 +135,4 @@ func getEnvInt(key string, defaultVal int) int {
 		return value
 	}
 	return defaultVal
-}
-
-func TicketAuthMiddleware(rdb *redis.Client) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		ticket := c.Query("ticket")
-
-		if ticket == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid ticket"})
-			c.Abort()
-			return
-		}
-
-		redisKey := "sse_ticket:" + ticket
-		userID, err := rdb.GetDel(c.Request.Context(), redisKey).Result()
-		if err == redis.Nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid ticket"})
-			c.Abort()
-			return
-		} else if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Interanl Server Error"})
-			c.Abort()
-			return
-		}
-
-		c.Set("userID", userID)
-		c.Next()
-	}
 }

@@ -11,7 +11,7 @@ class Notification(SoftDeleteModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='user_notifications')
 
     title = models.CharField(max_length=32, default='', null=False, blank=True)
-    body = models.CharField(max_length=32, default='', null=False, blank=True)
+    body = models.CharField(max_length=64, default='', null=False, blank=True)
     payload = models.JSONField(default=dict, blank=True)
 
     class Channel(models.TextChoices):
@@ -22,9 +22,11 @@ class Notification(SoftDeleteModel):
 
     class Type(models.TextChoices):
         ALERT = 'SA', 'SYSTEM_ALERT'
+        SYSTEM_INFO = 'SI', 'SYSTEM_INFO'
+        SYSTEM_WARNING = 'SW', 'SYSTEM_WARNING'
         STATUS_BAR = 'SB', 'STATUS_BAR'
 
-    type = models.CharField(max_length=2, choices=Type.choices, default=Type.STATUS_BAR)
+    type = models.CharField(max_length=2, choices=Type.choices, default=Type.SYSTEM_INFO)
 
     class Status(models.TextChoices):
         UNREAD = 'UR', 'unread'

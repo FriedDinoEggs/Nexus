@@ -2,6 +2,7 @@ from drf_spectacular.utils import extend_schema
 from rest_framework import permissions, viewsets
 
 from apps.teams.serializers import TeamSerializer
+from apps.teams.services import TeamService
 from apps.users.permissions import IsEventManagerGroup, IsSuperAdminGroup
 
 from .models import Team
@@ -40,3 +41,6 @@ class TeamViewSet(viewsets.ModelViewSet):
                 The serializer will be saved with its `user` field set to the requesting user.
         """
         serializer.save(user=self.request.user)
+
+    def perform_destroy(self, instance):
+        TeamService.disband_team(instance)

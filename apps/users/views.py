@@ -12,6 +12,8 @@ from rest_framework.views import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenBlacklistView, TokenRefreshView
 
+from apps.notification.models import Notification
+from apps.notification.services.services import NotificationServices
 from apps.users.models import UserSetting
 from apps.users.throttles import EmailVerificationThrottle, ResetPasswordThrottle
 
@@ -229,6 +231,14 @@ class UserResetPasswordViewSet(viewsets.GenericViewSet):
                 user = User.objects.get(email=serializer.validated_data['email'])
                 user.set_password(serializer.validated_data['password'])
                 user.save()
+
+                NotificationServices.send_notification(
+                    user_id=user.id,
+                    title='【帳號安全告警】',
+                    body='您的帳號密碼已重設成功。若非您本人操作，請立即聯繫管理員！',
+                    payload={'user_id': user.id},
+                    type=Notification.Type.ALERT,
+                )
 
             return Response(
                 {'message': 'password reset successful'},
