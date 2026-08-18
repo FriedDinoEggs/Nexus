@@ -37,6 +37,13 @@ urlpatterns = [
                         '', include(('apps.matches.urls', 'matches_app'), namespace='matches_app')
                     ),
                     path('', include(('apps.core.urls', 'core_app'), namespace='core_app')),
+                    path(
+                        '',
+                        include(
+                            ('apps.notification.urls', 'notification_app'),
+                            namespace='notification_app',
+                        ),
+                    ),
                 ],
                 'v1',
             ),

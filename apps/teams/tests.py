@@ -103,3 +103,97 @@ class TeamAPITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         team.refresh_from_db()
         self.assertIsNotNone(team.deleted_at)
+
+    def test_join_team_sends_notifications(self):
+        from apps.notification.models import Notification
+        from apps.teams.services import TeamService
+
+        team = Team.objects.create(name='Test Team', creator=self.manager, leader=self.manager)
+        new_member = User.objects.create_user(
+            email='new-joiner@test.com',
+            password='Pass123!@#',
+            full_name='New Joiner',
+        )
+
+        TeamService.join_team(team=team, user=new_member)
+
+        # Joined user notification
+        user_noti = Notification.objects.filter(user=new_member, title='【隊伍邀請通知】').first()
+        self.assertIsNotNone(user_noti)
+        self.assertIn('Test Team', user_noti.body)
+
+        # Leader notification
+        leader_noti = Notification.objects.filter(
+            user=self.manager, title='【隊伍成員變動】'
+        ).first()
+        self.assertIsNotNone(leader_noti)
+        self.assertIn('New Joiner', leader_noti.body)
+
+    def test_leave_team_sends_notifications(self):
+        from apps.notification.models import Notification
+        from apps.teams.services import TeamService
+
+        team = Team.objects.create(name='Test Team', creator=self.manager, leader=self.manager)
+        member = User.objects.create_user(
+            email='leaver@test.com',
+            password='Pass123!@#',
+            full_name='Leaver User',
+        )
+        TeamService.join_team(team=team, user=member)
+        Notification.objects.all().delete()
+
+        TeamService.leave_team(team=team, user=member)
+
+        # Leaving user notification
+        user_noti = Notification.objects.filter(user=member, title='【退出隊伍通知】').first()
+        self.assertIsNotNone(user_noti)
+
+        # Leader notification
+        leader_noti = Notification.objects.filter(
+            user=self.manager, title='【隊伍成員變動】'
+        ).first()
+        self.assertIsNotNone(leader_noti)
+
+    def test_transfer_leadership_sends_notifications(self):
+        from apps.notification.models import Notification
+        from apps.teams.services import TeamService
+
+        team = Team.objects.create(name='Test Team', creator=self.manager, leader=self.manager)
+        new_leader = User.objects.create_user(
+            email='new-leader@test.com',
+            password='Pass123!@#',
+            full_name='New Leader',
+        )
+        TeamService.join_team(team=team, user=new_leader)
+        Notification.objects.all().delete()
+
+        TeamService.transfer_leadership(team=team, new_leader=new_leader)
+
+        noti = Notification.objects.filter(user=new_leader, title='【隊長身分轉讓】').first()
+        self.assertIsNotNone(noti)
+        self.assertIn('Test Team', noti.body)
+
+    def test_disband_team_and_kick_member_sends_system_alert(self):
+        from apps.notification.models import Notification
+        from apps.teams.services import TeamService
+
+        team = TeamService.create_team(user=self.manager, name='Alert Team', leader=self.manager)
+        m1 = User.objects.create_user(
+            email='kicked@test.com', password='Pass123!@#', full_name='Kicked User'
+        )
+        TeamService.join_team(team=team, user=m1)
+        Notification.objects.all().delete()
+
+        # Test kick member -> SYSTEM_ALERT
+        TeamService.kick_member(team=team, target_user=m1)
+        kick_noti = Notification.objects.filter(user=m1, type=Notification.Type.ALERT).first()
+        self.assertIsNotNone(kick_noti)
+        self.assertEqual(kick_noti.title, '【隊伍成員變動告警】')
+
+        # Test disband team -> SYSTEM_ALERT
+        TeamService.disband_team(team=team)
+        disband_noti = Notification.objects.filter(
+            user=self.manager, type=Notification.Type.ALERT
+        ).first()
+        self.assertIsNotNone(disband_noti)
+        self.assertEqual(disband_noti.title, '【隊伍解散告警】')

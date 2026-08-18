@@ -3,6 +3,8 @@ from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.db import IntegrityError, transaction
 from django.db.models import Count
 
+from apps.notification.models import Notification
+from apps.notification.services.services import NotificationServices
 from apps.teams.models import Team
 
 from .models import (
@@ -280,6 +282,14 @@ class EventService:
 
             if created_orders:
                 RegistrationLunchOrder.objects.bulk_create(created_orders)
+                event_name = member.event_team.event.name
+                NotificationServices.send_notification(
+                    user_id=member.user.id,
+                    title='【餐點訂購確認】',
+                    body=f'您已成功登記「{event_name}」的餐點。',
+                    payload={'member_id': member.id, 'order_count': len(created_orders)},
+                    type=Notification.Type.SYSTEM_INFO,
+                )
 
         return created_orders
 
