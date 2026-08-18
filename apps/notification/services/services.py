@@ -19,7 +19,8 @@ class NotificationServices:
         ticket = str(uuid.uuid4())
         try:
             redis_conn = django_redis.get_redis_connection('default')
-            redis_conn.set(f'sse_ticket:{ticket}', user_id, ex=61)
+            if redis_conn.set(f'sse_ticket:{ticket}', user_id, ex=61):
+                return ''
 
         except Exception as e:
             logger.error(f'redis connection fault: {e}')
@@ -53,40 +54,47 @@ class NotificationServices:
         status=Notification.Status.UNREAD,
         idempotent=False,
         target_type='',
-        target_object='',
+        target_object=None,
         target_key='',
     ) -> Notification | None:
         with transaction.atomic():
             if idempotent:
+                if not target_object or not hasattr(target_object, 'id'):
+                    return None
+
                 str_target_id = str(target_object.id)
+
                 try:
-                    log, created = NotificationLog.objects.get_or_create(
-                        user_id=user_id,
-                        target_type=target_type,
-                        target_id=str_target_id,
-                        target_key=target_key,
-                    )
+                    with transaction.atomic():
+                        log, created = NotificationLog.objects.get_or_create(
+                            user_id=user_id,
+                            target_type=target_type,
+                            target_id=str_target_id,
+                            target_key=target_key,
+                        )
                 except IntegrityError:
                     created = False
 
                 if not created:
                     return None
+            try:
+                notif = Notification.objects.create(
+                    user_id=user_id,
+                    title=title,
+                    body=body,
+                    type=type,
+                    channel=channel,
+                    status=status,
+                    payload=payload,
+                )
 
-            notif = Notification.objects.create(
-                user_id=user_id,
-                title=title,
-                body=body,
-                type=type,
-                channel=channel,
-                status=status,
-                payload=payload,
-            )
-            print(notif.__dict__)
+                transaction.on_commit(
+                    lambda: NotificationServices.broadcast_to_user(user_id, notif)
+                )
 
-            transaction.on_commit(lambda: NotificationServices.broadcast_to_user(user_id, notif))
-
-            return notif
-        return None
+                return notif
+            except Exception as e:
+                raise e
 
     @staticmethod
     def __send_undelted_notification(user_id):

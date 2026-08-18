@@ -4,10 +4,9 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"sse-go-pusher/internal/app/service"
 	"strconv"
 	"time"
-
-	"sse-go-pusher/internal/app/service"
 
 	"github.com/gin-gonic/gin"
 )
@@ -62,7 +61,7 @@ func (sh *SSEHandler) StreamNotifications(c *gin.Context) {
 	ch, err := sh.service.GetNotificationStream(c.Request.Context(), userID, lastID)
 	if err != nil {
 		slog.Error("Failed to initiate notification stream", "user_id", userID, "error", err)
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -98,4 +97,3 @@ func (sh *SSEHandler) StreamNotifications(c *gin.Context) {
 		}
 	})
 }
-

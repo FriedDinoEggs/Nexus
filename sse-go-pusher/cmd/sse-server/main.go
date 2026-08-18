@@ -11,7 +11,6 @@ import (
 	"sse-go-pusher/internal/app/delivery"
 	"sse-go-pusher/internal/app/repositories/postgres"
 	"sse-go-pusher/internal/app/service"
-	"sse-go-pusher/internal/pkg/queue"
 	"sse-go-pusher/internal/pkg/stream"
 
 	"github.com/gin-gonic/gin"
@@ -84,7 +83,11 @@ func InitDB(ctx context.Context) error {
 		slog.Warn("No .env file found or failed to load, falling back to system environment variables", "error", err)
 	}
 
-	cfg := queue.RedisConfig{
+	cfg := struct {
+		Addr string
+		Pwd  string
+		DB   int
+	}{
 		Addr: fmt.Sprintf("%s:%s", os.Getenv("REDIS_HOST"), os.Getenv("REDIS_PORT")),
 		Pwd:  os.Getenv("REDIS_PASSWORD"),
 		DB:   getEnvInt("REDIS_DB", 0),

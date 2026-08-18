@@ -1,4 +1,4 @@
-from rest_framework import mixins, viewsets
+from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -33,6 +33,9 @@ class NotificationViewSet(
     @action(detail=False, methods=['POST'], url_path='ticket')
     def ticket(self, request):
         # NotificationServices.send_init_notifications(request.user.id)
+        ticket = NotificationServices.gen_ticket(request.user.id)
+        if not ticket:
+            return Response(status=status.HTTP_503_SERVICE_UNAVAILABLE)
         return Response({'ticket': f'{NotificationServices.gen_ticket(request.user.id)}'})
 
     @action(detail=True, methods=['POST'], url_path='mark_read')
