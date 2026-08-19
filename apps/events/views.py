@@ -3,6 +3,7 @@ from django.db.models import Q
 from drf_spectacular.utils import extend_schema
 from rest_framework import parsers, permissions, serializers, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.generics import get_object_or_404
 from rest_framework.views import Response
 
 from apps.notification.models import Notification
@@ -355,6 +356,18 @@ class EventTeamMemberViewSet(viewsets.ModelViewSet):
                 queryset = queryset.filter(user=user_param)
 
         return queryset
+
+    def get_object(self):
+        lookup_url_kwarg = self.lookup_url_kwarg or self.lookup_field
+        lookup_value = self.kwargs[lookup_url_kwarg]
+
+        if lookup_value == 'me':
+            queryset = self.filter_queryset(self.get_queryset())
+            obj = get_object_or_404(queryset, user=self.request.user)
+            self.check_object_permissions(self.request, obj)
+            return obj
+
+        return super().get_object()
 
     def create(self, request, *args, **kwargs):
         user = None
