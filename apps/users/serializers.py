@@ -10,6 +10,7 @@ from rest_framework_simplejwt.serializers import (
     TokenRefreshSerializer,
 )
 
+from apps.teams.services import TeamService
 from apps.users.models import ScocialAccount, UserSetting
 from apps.users.services import UserVerificationServices
 from apps.users.services.social_services import SocialServices
@@ -100,6 +101,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         user = User.objects.create_user(
             email=email, password=password, full_name=full_name, **validated_data
         )
+        TeamService.join_default_team(user)
         return user
 
 
@@ -126,6 +128,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
         allowed_fields = ['full_name', 'date_of_birth', 'avatar', 'is_active']
         user_data = {k: v for k, v in validated_data.items() if k in allowed_fields}
         user = User.objects.create_user(email=email, password=password, **user_data)
+        TeamService.join_default_team(user)
         return user
 
     def update(self, instance, validated_data):
@@ -176,6 +179,7 @@ class UserLoginSerializer(serializers.Serializer):
                 raise AuthenticationFailed('Invalid credentials')
             if not user.is_active:
                 raise AuthenticationFailed('Account has been disabled')
+            TeamService.join_default_team(user)
             return user
         else:
             raise serializers.ValidationError('請提供帳號密碼')
@@ -231,6 +235,8 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
         data = super().validate(attrs)
         data['access_token'] = data['access']
         data['refresh_token'] = data['refresh']
+        if getattr(self, 'user', None):
+            TeamService.join_default_team(self.user)
 
         return data
 
@@ -259,6 +265,7 @@ class GoogleLoginSerializer(serializers.Serializer):
                 is_active=True,
                 is_verified=True,
             )
+            TeamService.join_default_team(user)
 
         social_account, created = ScocialAccount.objects.get_or_create(
             social_id=info['provider_user_id'],

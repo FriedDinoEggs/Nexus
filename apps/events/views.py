@@ -271,7 +271,7 @@ class EventTeamViewSet(viewsets.ModelViewSet):
         for uid in recipients:
             NotificationServices.send_notification(
                 user_id=uid,
-                title='【隊伍報名取消警告】',
+                title='【隊伍報名取消告警】',
                 body=f'您的隊伍「{team_name}」在賽事「{event_name}」的隊伍報名已被取消。',
                 payload={
                     'event_team_id': event_team_id,

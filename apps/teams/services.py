@@ -207,3 +207,29 @@ class TeamService:
             payload={'team_id': team.id, 'team_name': team.name},
             type=Notification.Type.ALERT,
         )
+
+    @staticmethod
+    @transaction.atomic
+    def join_default_team(user: User) -> TeamMember:
+        """
+        Ensures the 'default' Team exists, adds the user to it, and sends a notification.
+        """
+        default_team, _ = Team.objects.get_or_create(
+            name='default',
+            defaults={
+                'creator': user,
+                'leader': user,
+            },
+        )
+
+        member, created = TeamMember.objects.get_or_create(team=default_team, user=user)
+        if created:
+            NotificationServices.send_notification(
+                user_id=user.id,
+                title='【隊伍邀請通知】',
+                body=f'您已被加入隊伍「{default_team.name}」。',
+                payload={'team_id': default_team.id, 'team_name': default_team.name},
+                type=Notification.Type.SYSTEM_INFO,
+            )
+
+        return member
