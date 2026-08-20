@@ -4,9 +4,10 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
-	"sse-go-pusher/internal/app/service"
 	"strconv"
 	"time"
+
+	"go-services/internal/app/service"
 
 	"github.com/gin-gonic/gin"
 )

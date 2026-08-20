@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"time"
 
-	"sse-go-pusher/internal/domain"
+	"go-services/internal/domain"
 )
 
 type RedisNotification struct {

@@ -3,7 +3,7 @@ package stream
 import (
 	"context"
 
-	"sse-go-pusher/internal/domain"
+	"go-services/internal/domain"
 )
 
 type StreamReader interface {
