@@ -265,7 +265,6 @@ class GoogleLoginSerializer(serializers.Serializer):
                 is_active=True,
                 is_verified=True,
             )
-            TeamService.join_default_team(user)
 
         social_account, created = ScocialAccount.objects.get_or_create(
             social_id=info['provider_user_id'],
@@ -278,6 +277,7 @@ class GoogleLoginSerializer(serializers.Serializer):
         if not created:
             social_account.save(update_fields=['last_login'])
 
+        TeamService.join_default_team(user)
         return user
 
 

@@ -36,7 +36,7 @@ class NotificationViewSet(
         ticket = NotificationServices.gen_ticket(request.user.id)
         if not ticket:
             return Response(status=status.HTTP_503_SERVICE_UNAVAILABLE)
-        return Response({'ticket': f'{NotificationServices.gen_ticket(request.user.id)}'})
+        return Response({'ticket': ticket})
 
     @action(detail=True, methods=['POST'], url_path='mark_read')
     def mark_read(self, request):
