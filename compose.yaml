@@ -102,7 +102,7 @@ services:
   sse-server:
     container_name: sse-server
     build:
-      context: ./sse-go-pusher
+      context: ./go-services
       dockerfile: Dockerfile.sse-server
     image: sse-server-api-image
     ports:

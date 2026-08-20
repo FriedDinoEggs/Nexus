@@ -6,8 +6,8 @@ import (
 	"log/slog"
 	"strconv"
 
-	"sse-go-pusher/internal/domain"
-	"sse-go-pusher/internal/pkg/stream"
+	"go-services/internal/domain"
+	"go-services/internal/pkg/stream"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
@@ -26,7 +26,6 @@ type NotificationHandler struct {
 func NewNotificationService(repo domain.NotificationRepository, stream stream.StreamReader) *NotificationService {
 	return &NotificationService{repo: repo, stream: stream}
 }
-
 
 func (ns *NotificationService) GetNotificationStream(ctx context.Context, userID, lastNotificationID int64) (<-chan string, error) {
 	var processingMessage stream.Handler
@@ -118,4 +117,3 @@ func (ns *NotificationService) StreamHistory(ctx context.Context, userID int64, 
 	}
 	return nil
 }
-

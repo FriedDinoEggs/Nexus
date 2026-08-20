@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"sse-go-pusher/internal/domain"
+	"go-services/internal/domain"
 )
 
 type PGNotificationModel struct {

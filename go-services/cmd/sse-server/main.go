@@ -8,10 +8,10 @@ import (
 	"strconv"
 	"time"
 
-	"sse-go-pusher/internal/app/delivery"
-	"sse-go-pusher/internal/app/repositories/postgres"
-	"sse-go-pusher/internal/app/service"
-	"sse-go-pusher/internal/pkg/stream"
+	"go-services/internal/app/delivery"
+	"go-services/internal/app/repositories/postgres"
+	"go-services/internal/app/service"
+	"go-services/internal/pkg/stream"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"

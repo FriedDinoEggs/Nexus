@@ -151,7 +151,7 @@ services:
   sse-server:
     container_name: sse-server
     build:
-      context: ./sse-go-pusher/
+      context: ./go-services/
       dockerfile: Dockerfile.sse-server
       args:
         - GIT_TAG=${GIT_TAG:-latest}
