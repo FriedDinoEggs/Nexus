@@ -21,6 +21,13 @@ class Team(SoftDeleteModel):
     class Meta:
         default_manager_name = SoftDeleteModel.Meta.default_manager_name
         ordering = ['-created_at']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['name'],
+                condition=models.Q(name='default', deleted_at__isnull=True),
+                name='unique_active_default_team',
+            ),
+        ]
 
     def __str__(self):
         return self.name

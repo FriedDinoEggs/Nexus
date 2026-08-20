@@ -20,12 +20,12 @@ class NotificationServices:
         try:
             redis_conn = django_redis.get_redis_connection('default')
             if redis_conn.set(f'sse_ticket:{ticket}', user_id, ex=61):
-                return ''
+                return ticket
 
         except Exception as e:
             logger.error(f'redis connection fault: {e}')
 
-        return ticket
+        return ''
 
     @staticmethod
     def broadcast_to_user(to: str, notification: Notification):

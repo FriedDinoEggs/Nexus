@@ -134,6 +134,10 @@ class EventTeamMember(TimeStampedModel):
         if not hasattr(self, 'user') or self.user is None:
             return
 
+        team = self.event_team.team
+        if team and not team.members.filter(pk=self.user.pk).exists():
+            raise ValidationError('User must be a member of the team to register for this event.')
+
         event = self.event_team.event
         if (
             EventTeamMember.objects.filter(event_team__event=event, user=self.user)
@@ -143,6 +147,7 @@ class EventTeamMember(TimeStampedModel):
             raise ValidationError('User is already registered in another team for this event.')
 
     def save(self, *args, **kwargs):
+        self.clean()
         event_team = self.event_team
         max_member = event_team.max_member
         max_waitlist = event_team.max_waitlist

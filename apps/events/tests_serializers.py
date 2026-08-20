@@ -8,7 +8,7 @@ from apps.events.serializers import (
     EventTeamMemberSerializer,
     EventTeamSerializer,
 )
-from apps.teams.models import Team
+from apps.teams.models import Team, TeamMember
 
 User = get_user_model()
 
@@ -20,6 +20,8 @@ class TestEventTeamMemberSerializer(APITestCase):
         )
         self.team1 = Team.objects.create(name='Team 1', creator=self.user)
         self.team2 = Team.objects.create(name='Team 2', creator=self.user)
+        TeamMember.objects.create(team=self.team1, user=self.user)
+        TeamMember.objects.create(team=self.team2, user=self.user)
         self.event = Event.objects.create(name='Test Event', type='LG')
         self.event_team1 = EventTeam.objects.create(event=self.event, team=self.team1)
         self.event_team2 = EventTeam.objects.create(event=self.event, team=self.team2)
