@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     'apps.teams',
     'apps.events',
     'apps.matches',
+    'apps.notification',
     'drf_spectacular',
     'django_extensions',
 ]

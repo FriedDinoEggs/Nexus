@@ -179,6 +179,8 @@ class EventAndEventTeamAPITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_event_teams_me_returns_only_joined_teams(self):
+        from apps.teams.models import TeamMember
+
         event = Event.objects.create(name='Joined Event', type=Event.TypeChoices.LEAGUE)
         joined_team = Team.objects.create(name='Joined Team', creator=self.manager)
         other_team = Team.objects.create(name='Other Team', creator=self.manager)
@@ -186,6 +188,7 @@ class EventAndEventTeamAPITests(APITestCase):
         joined_event_team = EventTeam.objects.create(event=event, team=joined_team)
         EventTeam.objects.create(event=event, team=other_team)
 
+        TeamMember.objects.create(team=joined_team, user=self.member)
         EventTeamMember.objects.create(event_team=joined_event_team, user=self.member)
 
         self.client.force_authenticate(user=self.member)
@@ -194,3 +197,191 @@ class EventAndEventTeamAPITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]['team_name'], 'Joined Team')
+
+    def test_event_update_sends_notification(self):
+        from apps.notification.models import Notification
+        from apps.teams.models import TeamMember
+
+        event = Event.objects.create(name='Original Event', type=Event.TypeChoices.LEAGUE)
+        team = Team.objects.create(name='Sample Team', creator=self.manager)
+        event_team = EventTeam.objects.create(event=event, team=team)
+        TeamMember.objects.create(team=team, user=self.member)
+        EventTeamMember.objects.create(event_team=event_team, user=self.member)
+
+        self.client.force_authenticate(user=self.manager)
+        response = self.client.patch(
+            reverse('v1:events_app:events-detail', kwargs={'id': event.id}),
+            {'start_time': timezone.now().isoformat()},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        noti = Notification.objects.filter(
+            user=self.member, title='【緊急賽程異動】請注意地點與時間'
+        ).first()
+        self.assertIsNotNone(noti)
+        self.assertIn('Original Event', noti.body)
+
+    def test_event_team_status_update_sends_notification(self):
+        from apps.notification.models import Notification
+
+        event = Event.objects.create(name='Review Event', type=Event.TypeChoices.LEAGUE)
+        team = Team.objects.create(name='Review Team', creator=self.manager, leader=self.manager)
+        event_team = EventTeam.objects.create(
+            event=event, team=team, leader=self.manager, status=EventTeam.StatusChoices.PENDING
+        )
+
+        self.client.force_authenticate(user=self.manager)
+        response = self.client.patch(
+            reverse('v1:events_app:event-teams-detail', kwargs={'id': event_team.id}),
+            {'status': EventTeam.StatusChoices.APPROVED},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        noti = Notification.objects.filter(user=self.manager, title='【隊伍報名審核結果】').first()
+        self.assertIsNotNone(noti)
+        self.assertIn('通過審核', noti.body)
+
+    def test_event_team_member_registration_and_waitlist_promotion_notifications(self):
+        from apps.notification.models import Notification
+        from apps.teams.models import TeamMember
+
+        event = Event.objects.create(name='Waitlist Event', type=Event.TypeChoices.LEAGUE)
+        team = Team.objects.create(name='WL Team', creator=self.manager)
+        event_team = EventTeam.objects.create(event=event, team=team, max_member=1, max_waitlist=2)
+
+        TeamMember.objects.create(team=team, user=self.member)
+
+        # 1. First member registers -> REGULAR
+        self.client.force_authenticate(user=self.member)
+        res1 = self.client.post(
+            reverse(
+                'v1:events_app:members-nested-list',
+                kwargs={'event_team_id': event_team.id},
+            ),
+            {},
+            format='json',
+        )
+        self.assertEqual(res1.status_code, status.HTTP_201_CREATED)
+        m1_noti = Notification.objects.filter(user=self.member, title='【報名成功通知】').first()
+        self.assertIsNotNone(m1_noti)
+
+        # 2. Second member registers -> WAITLIST
+        other_user = User.objects.create_user(
+            email='wl-user@test.com', password='Pass123!@#', full_name='WL User'
+        )
+        other_user.groups.add(self.member_group)
+        TeamMember.objects.create(team=team, user=other_user)
+        self.client.force_authenticate(user=other_user)
+        res2 = self.client.post(
+            reverse(
+                'v1:events_app:members-nested-list',
+                kwargs={'event_team_id': event_team.id},
+            ),
+            {},
+            format='json',
+        )
+        self.assertEqual(res2.status_code, status.HTTP_201_CREATED)
+        m2_noti = Notification.objects.filter(user=other_user, title='【報名候補通知】').first()
+        self.assertIsNotNone(m2_noti)
+
+        # 3. First member withdraws -> Second member gets promoted!
+        self.client.force_authenticate(user=self.member)
+        del_res = self.client.delete(
+            reverse(
+                'v1:events_app:members-nested-detail',
+                kwargs={
+                    'event_team_id': event_team.id,
+                    'id': res1.data['id'],
+                },
+            )
+        )
+        self.assertEqual(del_res.status_code, status.HTTP_204_NO_CONTENT)
+
+        # Check promotion notification for other_user
+        promo_noti = Notification.objects.filter(user=other_user, title='【備取遞補成功】').first()
+        self.assertIsNotNone(promo_noti)
+
+    def test_event_deletion_sends_system_alert(self):
+        from apps.notification.models import Notification
+        from apps.teams.models import TeamMember
+
+        event = Event.objects.create(name='Cancelled Event', type=Event.TypeChoices.LEAGUE)
+        team = Team.objects.create(name='Sample Team', creator=self.manager)
+        event_team = EventTeam.objects.create(event=event, team=team)
+        TeamMember.objects.create(team=team, user=self.member)
+        EventTeamMember.objects.create(event_team=event_team, user=self.member)
+        Notification.objects.all().delete()
+
+        self.client.force_authenticate(user=self.manager)
+        response = self.client.delete(
+            reverse('v1:events_app:events-detail', kwargs={'id': event.id}),
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        noti = Notification.objects.filter(user=self.member, type=Notification.Type.ALERT).first()
+        self.assertIsNotNone(noti)
+        self.assertEqual(noti.title, '【緊急通知】賽事已被取消')
+
+    def test_event_team_deletion_sends_system_alert(self):
+        from apps.notification.models import Notification
+        from apps.teams.models import TeamMember
+
+        event = Event.objects.create(name='Event Alpha', type=Event.TypeChoices.LEAGUE)
+        team = Team.objects.create(name='Team Alpha', creator=self.manager, leader=self.manager)
+        event_team = EventTeam.objects.create(event=event, team=team, leader=self.manager)
+        TeamMember.objects.create(team=team, user=self.member)
+        EventTeamMember.objects.create(event_team=event_team, user=self.member)
+        Notification.objects.all().delete()
+
+        self.client.force_authenticate(user=self.manager)
+        response = self.client.delete(
+            reverse('v1:events_app:event-teams-detail', kwargs={'id': event_team.id}),
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        noti_member = Notification.objects.filter(
+            user=self.member, type=Notification.Type.ALERT
+        ).first()
+        self.assertIsNotNone(noti_member)
+        self.assertEqual(noti_member.title, '【隊伍報名取消告警】')
+
+        noti_leader = Notification.objects.filter(
+            user=self.manager, type=Notification.Type.ALERT
+        ).first()
+        self.assertIsNotNone(noti_leader)
+
+    def test_event_team_member_requires_team_membership(self):
+        event = Event.objects.create(name='Validation Event', type=Event.TypeChoices.LEAGUE)
+        team = Team.objects.create(name='Exclusive Team', creator=self.manager)
+        event_team = EventTeam.objects.create(event=event, team=team)
+
+        # self.member is NOT a TeamMember of Exclusive Team
+        self.client.force_authenticate(user=self.member)
+        with suppress_django_request_warnings():
+            res = self.client.post(
+                reverse(
+                    'v1:events_app:members-nested-list',
+                    kwargs={'event_team_id': event_team.id},
+                ),
+                {},
+                format='json',
+            )
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('User must be a member of the team', str(res.data))
+
+        # Join team -> Now registration succeeds!
+        from apps.teams.models import TeamMember
+
+        TeamMember.objects.create(team=team, user=self.member)
+
+        res2 = self.client.post(
+            reverse(
+                'v1:events_app:members-nested-list',
+                kwargs={'event_team_id': event_team.id},
+            ),
+            {},
+            format='json',
+        )
+        self.assertEqual(res2.status_code, status.HTTP_201_CREATED)

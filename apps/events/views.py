@@ -1,10 +1,13 @@
 from django.contrib.auth import get_user_model
 from django.db.models import Q
 from drf_spectacular.utils import extend_schema
-from rest_framework import permissions, serializers, status, viewsets
+from rest_framework import parsers, permissions, serializers, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.generics import get_object_or_404
 from rest_framework.views import Response
 
+from apps.notification.models import Notification
+from apps.notification.services.services import NotificationServices
 from apps.teams.services import TeamService
 from apps.users.permissions import (
     IsEventManagerGroup,
@@ -14,6 +17,7 @@ from apps.users.permissions import (
 
 from .models import (
     Event,
+    EventAttachments,
     EventFavorites,
     EventMatchTemplate,
     EventTeam,
@@ -21,6 +25,7 @@ from .models import (
     LunchOption,
 )
 from .serializers import (
+    EventAttachmentSerializer,
     EventCalendarSerializer,
     EventMatchTemplateSerializer,
     EventSerializer,
@@ -55,7 +60,7 @@ class EventViewSet(viewsets.ModelViewSet):
     queryset = (
         Event.objects.all()
         .select_related('location')
-        .prefetch_related('teams', 'event_teams', 'lunch_options')
+        .prefetch_related('teams', 'event_teams', 'lunch_options', 'event_attachments')
     )
     serializer_class = EventSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -120,6 +125,48 @@ class EventViewSet(viewsets.ModelViewSet):
             return None
         return super().paginator
 
+    def perform_update(self, serializer):
+        event = serializer.save()
+        updated_fields = serializer.validated_data.keys()
+        if any(f in updated_fields for f in ['start_time', 'end_time', 'location']):
+            member_user_ids = list(
+                EventTeamMember.objects.filter(event_team__event=event)
+                .values_list('user_id', flat=True)
+                .distinct()
+            )
+            favorite_user_ids = list(event.favorites.values_list('id', flat=True).distinct())
+            all_user_ids = set(member_user_ids + favorite_user_ids)
+            for uid in all_user_ids:
+                NotificationServices.send_notification(
+                    user_id=uid,
+                    title='【緊急賽程異動】請注意地點與時間',
+                    body=f'賽事「{event.name}」的地點或時間已緊急變更，請立即至賽事頁面確認！',
+                    payload={'event_id': event.id, 'event_name': event.name},
+                    type=Notification.Type.ALERT,
+                )
+
+    def perform_destroy(self, instance):
+        event_name = instance.name
+        event_id = instance.id
+        member_user_ids = list(
+            EventTeamMember.objects.filter(event_team__event=instance)
+            .values_list('user_id', flat=True)
+            .distinct()
+        )
+        favorite_user_ids = list(instance.favorites.values_list('id', flat=True).distinct())
+        all_user_ids = set(member_user_ids + favorite_user_ids)
+
+        super().perform_destroy(instance)
+
+        for uid in all_user_ids:
+            NotificationServices.send_notification(
+                user_id=uid,
+                title='【緊急通知】賽事已被取消',
+                body=f'您報名的賽事「{event_name}」已被管理員取消，請注意最新公告！',
+                payload={'event_id': event_id, 'event_name': event_name},
+                type=Notification.Type.ALERT,
+            )
+
 
 @extend_schema(tags=['v1', 'Events'])
 class LunchOptionsViewSet(viewsets.ModelViewSet):
@@ -180,6 +227,59 @@ class EventTeamViewSet(viewsets.ModelViewSet):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
             return [(IsEventManagerGroup | IsSuperAdminGroup)()]
         return super().get_permissions()
+
+    def perform_update(self, serializer):
+        old_status = self.get_object().status
+        event_team = serializer.save()
+        new_status = event_team.status
+        if old_status != new_status and new_status in [
+            EventTeam.StatusChoices.APPROVED,
+            EventTeam.StatusChoices.REJECT,
+        ]:
+            status_text = '通過審核' if new_status == EventTeam.StatusChoices.APPROVED else '退回'
+            recipients = set()
+            if event_team.leader:
+                recipients.add(event_team.leader.id)
+            if event_team.coach:
+                recipients.add(event_team.coach.id)
+            if event_team.team and event_team.team.leader:
+                recipients.add(event_team.team.leader.id)
+            for uid in recipients:
+                NotificationServices.send_notification(
+                    user_id=uid,
+                    title='【隊伍報名審核結果】',
+                    body=f'您的隊伍「{event_team.team.name}」在「{event_team.event.name}」的報名申請已{status_text}。',
+                    payload={'event_team_id': event_team.id, 'status': new_status},
+                    type=Notification.Type.SYSTEM_INFO,
+                )
+
+    def perform_destroy(self, instance):
+        team_name = instance.team.name if instance.team else '隊伍'
+        event_name = instance.event.name if instance.event else '賽事'
+        event_team_id = instance.id
+
+        recipients = set(instance.event_team_members.values_list('user_id', flat=True).distinct())
+        if instance.leader:
+            recipients.add(instance.leader.id)
+        if instance.coach:
+            recipients.add(instance.coach.id)
+        if instance.team and instance.team.leader:
+            recipients.add(instance.team.leader.id)
+
+        super().perform_destroy(instance)
+
+        for uid in recipients:
+            NotificationServices.send_notification(
+                user_id=uid,
+                title='【隊伍報名取消告警】',
+                body=f'您的隊伍「{team_name}」在賽事「{event_name}」的隊伍報名已被取消。',
+                payload={
+                    'event_team_id': event_team_id,
+                    'team_name': team_name,
+                    'event_name': event_name,
+                },
+                type=Notification.Type.ALERT,
+            )
 
     def create(self, request, *args, **kwargs) -> Response:
         data = request.data.copy()
@@ -257,6 +357,18 @@ class EventTeamMemberViewSet(viewsets.ModelViewSet):
 
         return queryset
 
+    def get_object(self):
+        lookup_url_kwarg = self.lookup_url_kwarg or self.lookup_field
+        lookup_value = self.kwargs[lookup_url_kwarg]
+
+        if lookup_value == 'me':
+            queryset = self.filter_queryset(self.get_queryset())
+            obj = get_object_or_404(queryset, user=self.request.user)
+            self.check_object_permissions(self.request, obj)
+            return obj
+
+        return super().get_object()
+
     def create(self, request, *args, **kwargs):
         user = None
         data = request.data.copy()
@@ -280,5 +392,62 @@ class EventTeamMemberViewSet(viewsets.ModelViewSet):
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
-    def perform_create(self, serializer):
-        serializer.save()
+    def perform_create(self, serializer) -> None:
+        instance = serializer.save()
+        instance_data = dict(EventTeamMemberSerializer(instance).data)
+        event_name = instance.event_team.event.name
+        if instance.status == EventTeamMember.Status.WAITLIST:
+            title = '【報名候補通知】'
+            body = f'您已列入「{event_name}」的候補名單。'
+        else:
+            title = '【報名成功通知】'
+            body = f'您已成功報名參加「{event_name}」。'
+
+        NotificationServices.send_notification(
+            user_id=instance.user.id,
+            title=title,
+            body=body,
+            payload=instance_data,
+            type=Notification.Type.SYSTEM_INFO,
+        )
+
+    def perform_destroy(self, instance) -> None:
+        event_team = instance.event_team
+        event_name = event_team.event.name
+        was_regular = instance.status == EventTeamMember.Status.REGULAR
+        user_id = instance.user.id
+
+        super().perform_destroy(instance)
+
+        NotificationServices.send_notification(
+            user_id=user_id,
+            title='【取消報名通知】',
+            body=f'您已成功取消報名「{event_name}」。',
+            payload={},
+            type=Notification.Type.SYSTEM_INFO,
+        )
+
+        if was_regular:
+            next_wl = (
+                event_team.event_team_members.filter(status=EventTeamMember.Status.WAITLIST)
+                .order_by('created_at')
+                .first()
+            )
+            if next_wl:
+                next_wl.status = EventTeamMember.Status.REGULAR
+                next_wl.save()
+                next_data = dict(EventTeamMemberSerializer(next_wl).data)
+                NotificationServices.send_notification(
+                    user_id=next_wl.user.id,
+                    title='【備取遞補成功】',
+                    body=f'您已成功遞補為「{event_name}」的正式參賽選手！',
+                    payload=next_data,
+                    type=Notification.Type.SYSTEM_INFO,
+                )
+
+
+class EventAttachmentViewSet(viewsets.ModelViewSet):
+    queryset = EventAttachments.objects.all()
+    parser_classes = [parsers.MultiPartParser, parsers.FormParser]
+    serializer_class = EventAttachmentSerializer
+    permission_classes = [permissions.IsAuthenticated, IsSuperAdminGroup | IsEventManagerGroup]

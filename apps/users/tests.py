@@ -56,6 +56,35 @@ class UserRegistrationSerializerTests(BaseUsersTestCase):
 
         self.assertIn('is_active', serializer.fields)
 
+    def test_user_registration_joins_default_team_and_sends_notification(self):
+        from apps.notification.models import Notification
+        from apps.teams.models import Team, TeamMember
+
+        serializer = UserRegistrationSerializer(
+            data={
+                'email': 'default-notif-user@test.com',
+                'password': 'StrongPass123!@#',
+                'password_confirm': 'StrongPass123!@#',
+                'full_name': 'Notif User',
+            },
+            context={
+                'request': self.make_request(
+                    user=self.make_user(email='creator@test.com', groups=[self.superadmin_group])
+                )
+            },
+        )
+
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+        user = serializer.save()
+
+        default_team = Team.objects.filter(name='default').first()
+        self.assertIsNotNone(default_team)
+        self.assertTrue(TeamMember.objects.filter(team=default_team, user=user).exists())
+
+        noti = Notification.objects.filter(user=user, title='【隊伍邀請通知】').first()
+        self.assertIsNotNone(noti)
+        self.assertIn('default', noti.body)
+
     def test_non_superadmin_cannot_see_is_active_field(self):
         user = self.make_user(
             email='member@test.com',
@@ -310,6 +339,30 @@ class UserViewsAPITests(APITestCase):
             date_of_birth=date(2000, 1, 1),
         )
         self.member.groups.set([self.member_group])
+
+    def test_existing_user_lazy_backfill_on_login(self):
+        from apps.teams.models import Team, TeamMember
+        from apps.users.serializers import UserLoginSerializer
+
+        existing_user = User.objects.create_user(
+            email='existing@test.com',
+            password='Password123!',
+            full_name='Existing User',
+        )
+        TeamMember.objects.filter(user=existing_user).delete()
+        self.assertFalse(TeamMember.objects.filter(user=existing_user).exists())
+
+        from rest_framework.test import APIRequestFactory
+
+        serializer = UserLoginSerializer(
+            data={'email': 'existing@test.com', 'password': 'Password123!'},
+            context={'request': APIRequestFactory().post('/')},
+        )
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+
+        default_team = Team.objects.filter(name='default').first()
+        self.assertIsNotNone(default_team)
+        self.assertTrue(TeamMember.objects.filter(team=default_team, user=existing_user).exists())
 
     @patch('apps.users.views.UserVerificationServices.send_verification_mail')
     def test_verification_send_returns_accepted_for_authenticated_user(self, mock_send_mail):
