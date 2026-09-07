@@ -205,11 +205,13 @@ services:
     build:
       context: ./go-services
       dockerfile: Dockerfile.go-api
-    image: go-api-server-api-image
+      args:
+        - GIT_TAG=${GIT_TAG:-latest}
+    image: go-api-server-api-image:${GIT_TAG:-latest}
     ports:
       - 8081:8080
     environment:
-      REDIS_HOST: nexus_redis
+      REDIS_HOST: redis_prod
       REDIS_PORT: ${REDIS_PORT:?error}
       REDIS_PASSWORD: ${REDIS_PASSWORD:?error}
       REDIS_DB: ${REDIS_DB:?error}
@@ -217,7 +219,7 @@ services:
       NEXUS_DB_NAME: ${NEXUS_DB_NAME:?error}
       NEXUS_DB_USER: ${NEXUS_DB_USER:?error}
       NEXUS_DB_PWD: ${NEXUS_DB_PWD:?error}
-      NEXUS_DB_HOST: nexus_pg_db
+      NEXUS_DB_HOST: pg_db_prod
       NEXUS_DB_PORT: 5432
       GIN_MODE: release
       PORT: 8080
