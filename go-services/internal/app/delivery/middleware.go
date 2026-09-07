@@ -126,7 +126,6 @@ func OptionalJWTAuthMiddleware(verifier domain.UserJWTVerifier, userGroupRepo do
 		}
 
 		c.Set("identity", identity)
-		c.Set("UserID", claims.UserID)
 		c.Next()
 	}
 }
@@ -181,7 +180,6 @@ func JWTAuthMiddleware(verifier domain.UserJWTVerifier, userGroupRepo domain.Use
 		}
 
 		c.Set("identity", identity)
-		c.Set("UserID", claims.UserID)
 		c.Next()
 	}
 }
