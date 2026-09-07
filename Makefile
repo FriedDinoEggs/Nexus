@@ -10,6 +10,7 @@ install:
 makemigrations:
 	mkdir -p logs
 	$(MANAGE) makemigrations
+	goose up
 
 migrate:
 	$(MANAGE) migrate
