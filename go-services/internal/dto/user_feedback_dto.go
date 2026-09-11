@@ -1,6 +1,10 @@
 package dto
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 type UpdateFeedbackRequest struct {
 	Email    *string `json:"email" binding:"omitempty,email"`
@@ -22,12 +26,13 @@ type ListFeedbackRequest struct {
 }
 
 type UserFeedbackResponse struct {
-	ID       int64  `json:"id"`
-	UserID   *int64 `json:"userId"`
-	Email    string `json:"email"`
-	Category string `json:"category"`
-	Title    string `json:"title"`
-	Message  string `json:"message"`
+	ID            int64     `json:"id"`
+	UserID        *int64    `json:"userId"`
+	TrackingToken uuid.UUID `json:"trackingToken"`
+	Email         string    `json:"email"`
+	Category      string    `json:"category"`
+	Title         string    `json:"title"`
+	Message       string    `json:"message"`
 
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
