@@ -14,6 +14,7 @@ import (
 	"go-services/internal/domain"
 	"go-services/internal/ierrors"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -242,4 +243,27 @@ func buildBaseQueryWithFilter(baseQuery string, id int64, filter domain.Feedback
 	}
 
 	return finalQuery, args
+}
+
+func (uf *userFeedbackRepository) FindByTrackingToken(ctx context.Context, token uuid.UUID) (domain.UserFeedback, error) {
+	query := "SELECT * FROM user_feedbacks WHERE tracking_token = $1 "
+
+	rows, err := uf.db.Query(ctx, query, token)
+	if err != nil {
+		slog.ErrorContext(ctx, "userFeedback: PostgreSQL FindByTrackingToken query failed", "feedback_tracking_token", token, "error", err)
+		return domain.UserFeedback{}, err
+	}
+	defer rows.Close()
+
+	fb, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[PGUserFeedback])
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			slog.WarnContext(ctx, "userFeedback: PostgreSQL FindByTrackingToken record not found", "feedback_tracking_token", token)
+			return domain.UserFeedback{}, fmt.Errorf("feedback not found: %w", ierrors.ErrFeedbackNotFound)
+		}
+		slog.ErrorContext(ctx, "userFeedback: PostgreSQL FindByTrackingToken CollectOneRow failed", "feedback_tracking_token", token, "error", err)
+		return domain.UserFeedback{}, fmt.Errorf("data anomaly: %w", ierrors.ErrDataInconsistent)
+	}
+	ufb := fb.ToDomain()
+	return ufb, nil
 }

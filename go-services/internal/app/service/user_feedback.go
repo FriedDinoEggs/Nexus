@@ -4,6 +4,8 @@ import (
 	"context"
 
 	"go-services/internal/domain"
+
+	"github.com/google/uuid"
 )
 
 type UserFeedbackServiceImpl struct {
@@ -37,6 +39,14 @@ func (ufs *UserFeedbackServiceImpl) FindByID(ctx context.Context, ID int64, iden
 	}
 
 	fb, err := ufs.repo.FindByID(ctx, ID, filter)
+	if err != nil {
+		return domain.UserFeedback{}, err
+	}
+	return fb, nil
+}
+
+func (ufs *UserFeedbackServiceImpl) FindByTrackingToken(ctx context.Context, token uuid.UUID) (domain.UserFeedback, error) {
+	fb, err := ufs.repo.FindByTrackingToken(ctx, token)
 	if err != nil {
 		return domain.UserFeedback{}, err
 	}
