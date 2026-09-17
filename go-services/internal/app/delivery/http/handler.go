@@ -4,6 +4,8 @@ import (
 	"context"
 
 	"go-services/internal/domain"
+
+	"github.com/google/uuid"
 )
 
 type UserFeedbackService interface {
@@ -13,10 +15,20 @@ type UserFeedbackService interface {
 	Update(ctx context.Context, ID int64, updateFields domain.UpdateFeedbackInput, identity domain.Identity) (domain.UserFeedback, error)
 }
 
-type Handler struct {
-	feedbackServices UserFeedbackService
+type FeedbackReplyService interface {
+	CreateReply(ctx context.Context, input domain.CreateFeedbackReplyInput, identity domain.Identity) (domain.FeedbackReply, error)
+	ListReplies(ctx context.Context, input domain.ListFeedbackReplyInput, identity domain.Identity) ([]domain.FeedbackReply, bool, error)
+	FindByToken(ctx context.Context, token uuid.UUID) ([]domain.FeedbackReply, error)
 }
 
-func NewHandler(s UserFeedbackService) *Handler {
-	return &Handler{feedbackServices: s}
+type Handler struct {
+	feedbackServices UserFeedbackService
+	replyService     FeedbackReplyService
+}
+
+func NewHandler(s UserFeedbackService, rs FeedbackReplyService) *Handler {
+	return &Handler{
+		feedbackServices: s,
+		replyService:     rs,
+	}
 }

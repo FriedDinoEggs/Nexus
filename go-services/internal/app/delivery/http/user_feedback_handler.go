@@ -11,6 +11,7 @@ import (
 	"go-services/internal/pkg/validator"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/jinzhu/copier"
 )
 
@@ -196,3 +197,122 @@ func (ufh *Handler) UpdateUserFeedback(ctx *gin.Context) {
 	slog.InfoContext(reqCtx, "UpdateUserFeedback: feedback updated successfully", "feedback_id", uf.ID, "user_id", identity.UserID)
 	response.Success(ctx, responseData)
 }
+
+func (ufh *Handler) CreateFeedbackReply(c *gin.Context) {
+	reqCtx := c.Request.Context()
+	var req dto.CreateFeedbackReplyRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		slog.WarnContext(reqCtx, "CreateFeedbackReply: invalid JSON payload", "error", err)
+		errDetails := validator.ParseValidationError(err, req)
+		apiErrs := validator.NewValidationError(code.InvalidParams, "Parameter validation error", errDetails)
+		c.JSON(apiErrs.HTTPStatus, apiErrs)
+		return
+	}
+
+	identity := getIdentity(c)
+	input := domain.CreateFeedbackReplyInput{
+		FeedbackToken: req.FeedbackToken,
+		Content:       req.Content,
+	}
+
+	reply, err := ufh.replyService.CreateReply(reqCtx, input, identity)
+	if err != nil {
+		slog.WarnContext(reqCtx, "CreateFeedbackReply: failed to create reply", "feedback_token", req.FeedbackToken, "user_id", identity.UserID, "error", err)
+		response.FailWithError(c, err)
+		return
+	}
+
+	var res dto.CreateFeedbackReplyResponse
+	if err := copier.Copy(&res, &reply); err != nil {
+		slog.ErrorContext(reqCtx, "CreateFeedbackReply: response transformation failed", "reply_id", reply.ID, "error", err)
+		response.InternalError(c, "Data transformation failed: "+err.Error())
+		return
+	}
+
+	slog.InfoContext(reqCtx, "CreateFeedbackReply: reply created successfully", "reply_id", reply.ID, "feedback_token", req.FeedbackToken, "user_id", identity.UserID)
+	response.Created(c, res)
+}
+
+func (ufh *Handler) ListFeedbackReplies(c *gin.Context) {
+	reqCtx := c.Request.Context()
+	var req dto.ListFeedbackReplyRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		slog.WarnContext(reqCtx, "ListFeedbackReplies: invalid query parameters", "error", err)
+		errDetails := validator.ParseValidationError(err, req)
+		apiErrs := validator.NewValidationError(code.InvalidParams, "Parameter validation error", errDetails)
+		c.JSON(apiErrs.HTTPStatus, apiErrs)
+		return
+	}
+
+	page := req.Page
+	if page <= 0 {
+		page = 1
+	}
+	limit := req.Limit
+	if limit <= 0 {
+		limit = 10
+	}
+
+	identity := getIdentity(c)
+	inputData := domain.ListFeedbackReplyInput{
+		Page:  page - 1,
+		Limit: limit,
+	}
+
+	replies, hasNext, err := ufh.replyService.ListReplies(reqCtx, inputData, identity)
+	if err != nil {
+		slog.WarnContext(reqCtx, "ListFeedbackReplies: failed to list replies", "user_id", identity.UserID, "is_admin", identity.IsAdmin(), "error", err)
+		response.FailWithError(c, err)
+		return
+	}
+
+	var resList []dto.FeedbackReplyResponse
+	if err := copier.Copy(&resList, &replies); err != nil {
+		slog.ErrorContext(reqCtx, "ListFeedbackReplies: response transformation failed", "error", err)
+		response.InternalError(c, "Data transformation failed: "+err.Error())
+		return
+	}
+	if resList == nil {
+		resList = []dto.FeedbackReplyResponse{}
+	}
+
+	resp := dto.ListUserFeedbackReplyResponse{
+		Items:   resList,
+		HasNext: hasNext,
+		Limit:   limit,
+		Page:    page,
+	}
+
+	response.Success(c, resp)
+}
+
+func (ufh *Handler) GetFeedbackRepliesByToken(c *gin.Context) {
+	reqCtx := c.Request.Context()
+	tokenStr := c.Param("token")
+	token, err := uuid.Parse(tokenStr)
+	if err != nil {
+		slog.WarnContext(reqCtx, "GetFeedbackRepliesByToken: invalid token format", "token_param", tokenStr)
+		response.BadRequestWithCode(c, code.InvalidParams, "Invalid token format")
+		return
+	}
+
+	replies, err := ufh.replyService.FindByToken(reqCtx, token)
+	if err != nil {
+		slog.WarnContext(reqCtx, "GetFeedbackRepliesByToken: failed to get replies", "feedback_token", token, "error", err)
+		response.FailWithError(c, err)
+		return
+	}
+
+	var resList []dto.FeedbackReplyResponse
+	if err := copier.Copy(&resList, &replies); err != nil {
+		slog.ErrorContext(reqCtx, "GetFeedbackRepliesByToken: response transformation failed", "feedback_token", token, "error", err)
+		response.InternalError(c, "Data transformation failed: "+err.Error())
+		return
+	}
+	if resList == nil {
+		resList = []dto.FeedbackReplyResponse{}
+	}
+
+	response.Success(c, resList)
+}
+

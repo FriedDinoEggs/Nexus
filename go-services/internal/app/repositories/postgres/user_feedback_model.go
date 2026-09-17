@@ -47,3 +47,28 @@ func fromUserFeedbackDomain(d *domain.UserFeedback) *PGUserFeedback {
 		UpdatedAt:     d.UpdatedAt,
 	}
 }
+
+type PGFeedbackReply struct {
+	ID            int64     `db:"id"`
+	FeedbackToken uuid.UUID `db:"feedback_token"`
+	Content       string    `db:"content"`
+	CreatedAt     time.Time `db:"created_at"`
+}
+
+func (pufr *PGFeedbackReply) ToDomain() domain.FeedbackReply {
+	return domain.FeedbackReply{
+		ID:            pufr.ID,
+		FeedbackToken: pufr.FeedbackToken,
+		Content:       pufr.Content,
+		CreatedAt:     pufr.CreatedAt,
+	}
+}
+
+func fromFeedbackReplyDomain(d *domain.FeedbackReply) *PGFeedbackReply {
+	return &PGFeedbackReply{
+		ID:            d.ID,
+		FeedbackToken: d.FeedbackToken,
+		Content:       d.Content,
+		CreatedAt:     d.CreatedAt,
+	}
+}
