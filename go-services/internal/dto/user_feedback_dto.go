@@ -46,3 +46,29 @@ type ListFeedbackResponse struct {
 }
 
 type UpdateFeedbackResponse = UserFeedbackResponse
+
+type CreateFeedbackReplyRequest struct {
+	FeedbackToken uuid.UUID `json:"feedbackToken" binding:"required"`
+	Content       string    `json:"content" binding:"required,max=5000"`
+}
+
+type ListFeedbackReplyRequest struct {
+	Page  int `form:"page" binding:"omitempty,gte=1"`
+	Limit int `form:"limit" binding:"omitempty,gte=1,lte=200"`
+}
+
+type FeedbackReplyResponse struct {
+	ID            int64     `json:"id"`
+	FeedbackToken uuid.UUID `json:"feedbackToken"`
+	Content       string    `json:"content"`
+	CreatedAt     time.Time `json:"createdAt"`
+}
+
+type CreateFeedbackReplyResponse = FeedbackReplyResponse
+
+type ListUserFeedbackReplyResponse struct {
+	Items   []FeedbackReplyResponse `json:"items"`
+	HasNext bool                    `json:"hasNext"`
+	Page    int                     `json:"page"`
+	Limit   int                     `json:"limit"`
+}

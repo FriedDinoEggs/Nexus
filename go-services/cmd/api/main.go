@@ -78,9 +78,10 @@ func main() {
 	userGroupRepo := postgres.NewUserGroupRepository(pgPool)
 
 	userFeedbackService := service.NewUserFeedbackServiceImpl(userFeedbackRepo)
+	feedbackReplyService := service.NewFeedbackReplyServiceImpl(userFeedbackRepo)
 	jwtVerifierService := service.NewJwtVerifierService(jwtSecret)
 
-	userFeedbackHandler := deliveryHttp.NewHandler(userFeedbackService)
+	userFeedbackHandler := deliveryHttp.NewHandler(userFeedbackService, feedbackReplyService)
 
 	router := gin.New()
 	router.Use(gin.Recovery())
@@ -100,12 +101,16 @@ func main() {
 		feedbacks := v1.Group("/feedbacks")
 		{
 			feedbacks.POST("", delivery.OptionalJWTAuthMiddleware(jwtVerifierService, userGroupRepo), userFeedbackHandler.CreateUserFeedback)
+			feedbacks.GET("/tracking/:token/replies", userFeedbackHandler.GetFeedbackRepliesByToken)
 
 			protectedFeedbacks := feedbacks.Group("", delivery.JWTAuthMiddleware(jwtVerifierService, userGroupRepo))
 			{
 				protectedFeedbacks.GET("", userFeedbackHandler.ListUserFeedback)
 				protectedFeedbacks.GET("/:id", userFeedbackHandler.GetUserFeedback)
 				protectedFeedbacks.PATCH("/:id", userFeedbackHandler.UpdateUserFeedback)
+
+				protectedFeedbacks.GET("/replies", userFeedbackHandler.ListFeedbackReplies)
+				protectedFeedbacks.POST("/replies", userFeedbackHandler.CreateFeedbackReply)
 			}
 		}
 	}

@@ -19,16 +19,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type userFeedbackRepository struct {
-	db *pgxpool.Pool
-}
-
-func NewUserFeedbackRepository(db *pgxpool.Pool) domain.UserFeedbackRepository {
-	return &userFeedbackRepository{
-		db: db,
-	}
-}
-
 var feedbackFieldNameMap = make(map[string]string)
 
 func init() {
@@ -40,6 +30,22 @@ func init() {
 			feedbackFieldNameMap[domainTag] = dbTag
 		}
 	}
+}
+
+type userFeedbackRepository struct {
+	db        *pgxpool.Pool
+	replyRepo *feedbackReplyRepo
+}
+
+func NewUserFeedbackRepository(db *pgxpool.Pool) domain.UserFeedbackRepository {
+	return &userFeedbackRepository{
+		db:        db,
+		replyRepo: &feedbackReplyRepo{db: db},
+	}
+}
+
+func (uf *userFeedbackRepository) Replies() domain.FeedbackReplyRepo {
+	return uf.replyRepo
 }
 
 func (uf *userFeedbackRepository) FindAll(ctx context.Context, input domain.ListFeedbackInput, filter domain.FeedbackFilter) ([]domain.UserFeedback, bool, error) {
@@ -266,4 +272,101 @@ func (uf *userFeedbackRepository) FindByTrackingToken(ctx context.Context, token
 	}
 	ufb := fb.ToDomain()
 	return ufb, nil
+}
+
+type feedbackReplyRepo struct {
+	db *pgxpool.Pool
+}
+
+func (fr *feedbackReplyRepo) Create(ctx context.Context, input domain.CreateFeedbackReplyInput) (domain.FeedbackReply, error) {
+	query := `INSERT INTO feedback_replies (feedback_token, content)
+		SELECT $1, $2
+		WHERE EXISTS (
+			SELECT 1 FROM user_feedbacks WHERE tracking_token = $1
+		)
+		RETURNING *;
+	`
+	pgData := &PGFeedbackReply{
+		Content:       input.Content,
+		FeedbackToken: input.FeedbackToken,
+	}
+
+	rows, err := fr.db.Query(ctx, query, pgData.FeedbackToken, pgData.Content)
+	if err != nil {
+		slog.ErrorContext(ctx, "FeedbackReply: PostgreSQL Create query failed", "FeedbackToken", pgData.FeedbackToken, "Content", pgData.Content, "error", err)
+		return domain.FeedbackReply{}, err
+	}
+	defer rows.Close()
+
+	insertedData, err := pgx.CollectOneRow(rows, pgx.RowToStructByName[PGFeedbackReply])
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			slog.WarnContext(ctx, "FeedbackReply: PostgreSQL Create feedback not found", "FeedbackToken", pgData.FeedbackToken)
+			return domain.FeedbackReply{}, fmt.Errorf("feedback not found: %w", ierrors.ErrFeedbackNotFound)
+		}
+		slog.ErrorContext(ctx, "FeedbackReply: PostgreSQL Create CollectOneRow failed", "error", err)
+		return domain.FeedbackReply{}, err
+	}
+
+	domainInsertData := insertedData.ToDomain()
+
+	return domainInsertData, nil
+}
+
+func (fr *feedbackReplyRepo) FindAll(ctx context.Context, input domain.ListFeedbackReplyInput) ([]domain.FeedbackReply, bool, error) {
+	query := `SELECT * FROM feedback_replies 
+									ORDER BY created_at DESC
+									LIMIT $1 OFFSET $2`
+
+	limit := input.Limit + 1
+	page := input.Page
+	if page < 0 {
+		page = 0
+	}
+	offset := page * input.Limit
+
+	rows, err := fr.db.Query(ctx, query, limit, offset)
+	if err != nil {
+		slog.ErrorContext(ctx, "FeedbackReply: PostgreSQL FindAll query failed", "error", err)
+		return nil, false, err
+	}
+	defer rows.Close()
+
+	replies, err := pgx.CollectRows(rows, pgx.RowToStructByName[PGFeedbackReply])
+	if err != nil {
+		slog.ErrorContext(ctx, "FeedbackReply: PostgreSQL FindAll CollectRows failed", "error", err)
+		return nil, false, fmt.Errorf("FeedbackReply: FindAll CollectRows failed: %w", err)
+	}
+
+	feedbackReplies := make([]domain.FeedbackReply, len(replies))
+	for i, reply := range replies {
+		feedbackReplies[i] = reply.ToDomain()
+	}
+	hasNext := len(feedbackReplies) > input.Limit
+
+	return feedbackReplies[:min(len(feedbackReplies), input.Limit)], hasNext, nil
+}
+
+func (fr *feedbackReplyRepo) FindByToken(ctx context.Context, token uuid.UUID) ([]domain.FeedbackReply, error) {
+	query := `SELECT * FROM feedback_replies WHERE feedback_token = $1 ORDER BY created_at ASC`
+
+	rows, err := fr.db.Query(ctx, query, token)
+	if err != nil {
+		slog.ErrorContext(ctx, "FeedbackReply: PostgreSQL FindByToken query failed", "feedback_token", token, "error", err)
+		return nil, err
+	}
+	defer rows.Close()
+
+	replies, err := pgx.CollectRows(rows, pgx.RowToStructByName[PGFeedbackReply])
+	if err != nil {
+		slog.ErrorContext(ctx, "FeedbackReply: PostgreSQL FindByToken CollectRows failed", "feedback_token", token, "error", err)
+		return nil, fmt.Errorf("FeedbackReply: FindByToken CollectRows failed: %w", err)
+	}
+
+	domainReplies := make([]domain.FeedbackReply, len(replies))
+	for i, reply := range replies {
+		domainReplies[i] = reply.ToDomain()
+	}
+
+	return domainReplies, nil
 }

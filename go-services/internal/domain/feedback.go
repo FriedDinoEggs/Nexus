@@ -31,9 +31,16 @@ type UserFeedbackByTrackingToken interface {
 	FindByTrackingToken(ctx context.Context, token uuid.UUID) (UserFeedback, error)
 }
 
+type FeedbackReplyRepo interface {
+	FindAll(ctx context.Context, input ListFeedbackReplyInput) ([]FeedbackReply, bool, error)
+	FindByToken(ctx context.Context, token uuid.UUID) ([]FeedbackReply, error)
+	Create(ctx context.Context, input CreateFeedbackReplyInput) (FeedbackReply, error)
+}
+
 type UserFeedbackRepository interface {
 	UserFeedbackByID
 	UserFeedbackByTrackingToken
+	Replies() FeedbackReplyRepo
 }
 
 type UpdateFeedbackInput struct {
@@ -60,4 +67,21 @@ type FeedbackFilter struct {
 	UserID   *int64
 	Category *string
 	Status   *string
+}
+
+type FeedbackReply struct {
+	ID            int64
+	FeedbackToken uuid.UUID
+	Content       string
+	CreatedAt     time.Time
+}
+
+type ListFeedbackReplyInput struct {
+	Page  int
+	Limit int
+}
+
+type CreateFeedbackReplyInput struct {
+	FeedbackToken uuid.UUID
+	Content       string
 }
