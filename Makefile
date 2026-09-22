@@ -1,6 +1,7 @@
-.PHONY: help install migrate test lint run create_test_user set_groups up down run_granian ci-test dk_up_prod dk_down_prod
+.PHONY: help install migrate test lint run create_test_user set_groups up down run_granian ci-test dk_up_prod dk_down_prod pull_secrets verify_secrets
 
 MANAGE := uv run manage.py
+PYTHON := uv run 
 
 include docker.mk
 
@@ -23,7 +24,6 @@ set_groups:
 
 run:
 	$(MANAGE) runserver
-
 run_granian:
 	uv run granian config.wsgi:application --interface wsgi --host 127.0.0.1 --port 8000 --workers 1 --blocking-threads 1 --access-log
 
@@ -58,7 +58,13 @@ up:
 down:
 	docker compose -p nexus-test down -t 10
 
-dk_up_prod:
+pull_secrets:
+	$(PYTHON) scripts/sync_secrets.py pull
+
+verify_secrets:
+	$(PYTHON) scripts/sync_secrets.py verify
+
+dk_up_prod: pull_secrets
 	make dk-up ENV=prod
 
 dk_down_prod:

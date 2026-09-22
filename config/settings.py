@@ -10,31 +10,49 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 import os
-from dotenv import load_dotenv
+from dotenv import dotenv_values, load_dotenv
 from pathlib import Path
 import datetime
 
-load_dotenv()
-
-def get_bool_env(key: str, default: str = 'False') -> bool:
-    value = os.getenv(key, default=default).lower()
-    return value in {'true', '1', 'yes', 'on', 't'}
-
-DEBUG:bool = get_bool_env('DEBUG')
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+def _is_production() -> bool:
+    has_secret_file = Path('/run/secrets/.env.prod').exists()
+    debug_val = os.getenv('DEBUG', 'False' if has_secret_file else 'True').lower()
+    return debug_val not in {'true', '1', 'yes', 'on', 't'}
+
+IS_PRODUCTION: bool = _is_production()
+DEBUG: bool = not IS_PRODUCTION
+
+APP_CONFIG: dict[str, str] = {}
+
+if IS_PRODUCTION:
+    for config_path in [Path('/run/secrets/.env.prod'), BASE_DIR / '.env.prod']:
+        if config_path.exists():
+            APP_CONFIG = {k: v for k, v in dotenv_values(config_path).items() if v is not None}
+            break
+else:
+    load_dotenv(BASE_DIR / '.env')
+
+
+def get_conf(key: str) -> str:
+    if IS_PRODUCTION:
+        val = APP_CONFIG.get(key)
+        if not val:
+            raise KeyError(f"Required configuration '{key}' not found in production configuration file (.env.prod)!")
+        return val
+    val = os.environ.get(key)
+    if not val:
+        raise KeyError(f"Required configuration '{key}' not found in environment (.env)!")
+    return val
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
-ALLOW_HOST='PROD_ALLOW_HOST'
-
-if DEBUG:
-    ALLOW_HOST='ALLOW_HOST'
-
-
-ALLOWED_HOSTS = [host.strip() for host in os.environ[ALLOW_HOST].split(',') if host.strip()]
+ALLOW_HOST = 'ALLOW_HOST' if DEBUG else 'PROD_ALLOW_HOST'
+_hosts_val = get_conf(ALLOW_HOST)
+ALLOWED_HOSTS = [host.strip() for host in _hosts_val.split(',') if host.strip()]
 
 # Application definition
 
@@ -109,16 +127,16 @@ if os.getenv('CI'):
         }
     }
 else:
-    SECRET_KEY = os.environ['NEXUS_SECRET_KEY']
-    
+    SECRET_KEY = get_conf('NEXUS_SECRET_KEY')
+
     DATABASES = {
         "default": {
             "ENGINE": "django_prometheus.db.backends.postgresql",
-            "NAME": os.environ['NEXUS_DB_NAME'],
-            "USER": os.environ["NEXUS_DB_USER"],
-            "PASSWORD": os.environ['NEXUS_DB_PWD'],
-            "HOST": os.environ['NEXUS_DB_HOST'],
-            "PORT": os.environ['NEXUS_DB_PORT'],
+            "NAME": get_conf('NEXUS_DB_NAME'),
+            "USER": get_conf("NEXUS_DB_USER"),
+            "PASSWORD": get_conf('NEXUS_DB_PWD'),
+            "HOST": get_conf('NEXUS_DB_HOST'),
+            "PORT": get_conf('NEXUS_DB_PORT'),
             'OPTIONS': {
                 'pool': {
                     'min_size': 2,
@@ -134,14 +152,14 @@ STORAGES = {
     "default": {
         "BACKEND": "storages.backends.s3.S3Storage",
         "OPTIONS": {
-            "endpoint_url": os.environ["R2_API"],
-            "access_key": os.environ["R2_ACCESS_KEY"],
-            "secret_key": os.environ["R2_SECRET_KEY"],
-            "bucket_name": os.environ["R2_BUCKET_NAME"],
+            "endpoint_url": get_conf("R2_API"),
+            "access_key": get_conf("R2_ACCESS_KEY"),
+            "secret_key": get_conf("R2_SECRET_KEY"),
+            "bucket_name": get_conf("R2_BUCKET_NAME"),
             "region_name": "auto",
-            
+
             "querystring_auth": True,
-            "querystring_expire": 3600,  
+            "querystring_expire": 3600,
             "default_acl": None,
 
             "file_overwrite": False,
@@ -191,7 +209,7 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-# STATIC_URL = 'static/'
+STATIC_URL = 'static/'
 # MEDIA_URL = '/media/'
 # MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
@@ -281,28 +299,34 @@ SIMPLE_JWT = {
 CELERY_TIMEZONE = 'Asia/Taipei'
 CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = 30 * 60
-CELERY_BROKER_URL = os.environ.get(
-    'CELERY_BROKER_URL',
-    f'redis://:{os.environ["REDIS_PASSWORD"]}@localhost:6380/2'
-)
-CELERY_RESULT_BACKEND = os.environ.get(
-    'CELERY_RESULT_BACKEND',
-    f'redis://:{os.environ["REDIS_PASSWORD"]}@localhost:6380/3'
-)
-CELERY_RESULT_EXPIRES = 60*60
+
+_redis_pwd = get_conf('REDIS_PASSWORD')
+_redis_host = get_conf('REDIS_HOST')
+_redis_port = get_conf('REDIS_PORT')
+_redis_db = get_conf('REDIS_DB')
+
+CELERY_BROKER_URL = f'redis://:{_redis_pwd}@{_redis_host}:{_redis_port}/2'
+CELERY_RESULT_BACKEND = f'redis://:{_redis_pwd}@{_redis_host}:{_redis_port}/3'
+CELERY_RESULT_EXPIRES = 60 * 60
 
 # Mailtrap
 MAILTRAP_USE_SANDBOX = False
-MAILTRAP_API_KEY = os.getenv('MAILTRAP_KEY')
-MAILTRAP_DOMAIN = os.getenv('MAILTRAP_DOMAIN')
-MAILTRAP_INBOX_ID = os.getenv('MAILTRAP_INBOX_ID')
+MAILTRAP_API_KEY = get_conf('MAILTRAP_KEY')
+MAILTRAP_DOMAIN = get_conf('MAILTRAP_DOMAIN')
+MAILTRAP_INBOX_ID = get_conf('MAILTRAP_INBOX_ID')
 if DEBUG:
     MAILTRAP_USE_SANDBOX = True
 
 SITE_BASEURL = 'localhost:8000'
 
-GOOGLE_WEB_CLIENT_ID = os.getenv('GOOGLE_OAUTH_CLIENT_ID')
-GOOGLE_OAUTH_SECRET_FILE_PATH = os.getenv('GOOGLE_OAUTH_SCRECT_FILE_PATH')
+GOOGLE_WEB_CLIENT_ID = get_conf('GOOGLE_OAUTH_CLIENT_ID')
+if IS_PRODUCTION:
+    GOOGLE_CLIENT_SECRET_JSON = get_conf('GOOGLE_CLIENT_SECRET_JSON')
+    GOOGLE_OAUTH_SECRET_FILE_PATH = None
+else:
+    GOOGLE_CLIENT_SECRET_JSON = os.environ.get('GOOGLE_CLIENT_SECRET_JSON', '')
+    GOOGLE_OAUTH_SECRET_FILE_PATH = os.environ.get('GOOGLE_OAUTH_SCRECT_FILE_PATH', '')
+
 if DEBUG:
     TEMPLATES[0]['DIRS'] += [BASE_DIR / "frontend" / "dist" / "test-google-login"]
 
@@ -320,10 +344,10 @@ else:
     CACHES = {
         "default": {
             "BACKEND": "django_redis.cache.RedisCache",
-            "LOCATION": os.environ['REDIS_LOCATION'],
+            "LOCATION": f'redis://{_redis_host}:{_redis_port}/{_redis_db}',
             "OPTIONS": {
                 "CLIENT_CLASS": "django_redis.client.DefaultClient",
-                "PASSWORD": os.environ['REDIS_PASSWORD'],
+                "PASSWORD": _redis_pwd,
             }
         }
     }

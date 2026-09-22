@@ -6,7 +6,6 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
-	"strconv"
 	"time"
 
 	"go-services/internal/app/delivery"
@@ -57,18 +56,59 @@ func main() {
 
 	slog.Info("Starting API Server")
 
-	if err := godotenv.Load(); err != nil {
-		slog.Warn("No .env file found or failed to load, using environment variables")
+	isProd := false
+	var fileConfig map[string]string
+
+	if _, err := os.Stat("/run/secrets/.env.prod"); err == nil {
+		isProd = true
+		if m, err := godotenv.Read("/run/secrets/.env.prod"); err == nil {
+			slog.Info("Production mode: Loaded configurations directly from file into memory")
+			fileConfig = m
+		} else {
+			slog.Error("Failed to read /run/secrets/.env.prod", "error", err)
+			os.Exit(1)
+		}
+	} else if os.Getenv("GIN_MODE") == "release" {
+		isProd = true
+		if m, err := godotenv.Read(".env.prod"); err == nil {
+			slog.Info("Production mode: Loaded .env.prod directly into memory")
+			fileConfig = m
+		} else {
+			slog.Error("Failed to read .env.prod", "error", err)
+			os.Exit(1)
+		}
+	} else {
+		if err := godotenv.Load(); err != nil {
+			slog.Warn("No .env file found, using system environment variables")
+		}
 	}
 
-	pgPool, err := initDB(context.Background())
+	getConf := func(key string) string {
+		if isProd {
+			if fileConfig != nil {
+				if val, ok := fileConfig[key]; ok && val != "" {
+					return val
+				}
+			}
+			slog.Error("Required configuration missing from production file", "key", key)
+			os.Exit(1)
+		}
+		val := os.Getenv(key)
+		if val == "" {
+			slog.Error("Required configuration missing from environment", "key", key)
+			os.Exit(1)
+		}
+		return val
+	}
+
+	pgPool, err := initDB(context.Background(), getConf)
 	if err != nil {
 		slog.Error("Database initialization failed", "error", err)
 		os.Exit(1)
 	}
 	defer pgPool.Close()
 
-	jwtSecret := os.Getenv("NEXUS_SECRET_KEY")
+	jwtSecret := getConf("NEXUS_SECRET_KEY")
 	if jwtSecret == "" {
 		slog.Error("JWT_SECRET not set")
 		os.Exit(1)
@@ -115,9 +155,13 @@ func main() {
 		}
 	}
 
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
+	port := "8080"
+	if isProd {
+		if val, ok := fileConfig["PORT"]; ok && val != "" {
+			port = val
+		}
+	} else if val := os.Getenv("PORT"); val != "" {
+		port = val
 	}
 
 	slog.Info("API Server running", "port", port)
@@ -126,13 +170,13 @@ func main() {
 	}
 }
 
-func initDB(ctx context.Context) (*pgxpool.Pool, error) {
+func initDB(ctx context.Context, getConf func(string) string) (*pgxpool.Pool, error) {
 	connStr := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable",
-		os.Getenv("NEXUS_DB_USER"),
-		os.Getenv("NEXUS_DB_PWD"),
-		os.Getenv("NEXUS_DB_HOST"),
-		os.Getenv("NEXUS_DB_PORT"),
-		os.Getenv("NEXUS_DB_NAME"),
+		getConf("NEXUS_DB_USER"),
+		getConf("NEXUS_DB_PWD"),
+		getConf("NEXUS_DB_HOST"),
+		getConf("NEXUS_DB_PORT"),
+		getConf("NEXUS_DB_NAME"),
 	)
 
 	config, err := pgxpool.ParseConfig(connStr)
@@ -160,11 +204,4 @@ func initDB(ctx context.Context) (*pgxpool.Pool, error) {
 
 	slog.Info("PostgreSQL connection pool initialized and pinged successfully")
 	return pgPool, nil
-}
-
-func getEnvInt(key string, defaultVal int) int {
-	if value, err := strconv.Atoi(os.Getenv(key)); err == nil {
-		return value
-	}
-	return defaultVal
 }
