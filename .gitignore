@@ -1,7 +1,12 @@
 .env
+.env.*
+*.env
+**/*.json.secret
+*secret*.json
 **/__pycache__
 .vscode
 **/logs/
 **/screct/
 package-lock.json
 **/templates/emails
+

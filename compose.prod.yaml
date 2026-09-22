@@ -5,15 +5,12 @@ x-django-template: &django-base
     args:
       - GIT_TAG=${GIT_TAG:-latest}
   image: api-image:${GIT_TAG:-latest}
+  secrets:
+    - source: prod_env
+      target: /run/secrets/.env.prod
   environment:
     - RUST_BACKTRACE=full
-    - NEXUS_DB_HOST=pg_db_prod
-    - NEXUS_DB_PORT=5432
-    - REDIS_LOCATION=redis://:${REDIS_PASSWORD}@redis_prod:6379/1
     - DEBUG=False
-    - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis_prod:6379/2
-    - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis_prod:6379/3
-    - PROD_ALLOW_HOST=${PROD_ALLOW_HOST},django-engine1,django-engine2,api
 
   restart: unless-stopped
 
@@ -129,11 +126,14 @@ services:
       dockerfile: Dockerfile.celery
       args:
         - GIT_TAG=${GIT_TAG:-latest}
-    environment:
-      CELERY_BROKER_URL: redis://:${REDIS_PASSWORD}@redis_prod:6379/2
-      CELERY_RESULT_BACKEND: redis://:${REDIS_PASSWORD}@redis_prod:6379/3
+    secrets:
+      - source: prod_env
+        target: /run/secrets/.env.prod
     image: celery-image:${GIT_TAG:-latest}
     command: celery -A config worker -l INFO --concurrency 2
+    environment:
+      - RUST_BACKTRACE=full
+      - DEBUG=False
     healthcheck:
       test:
         [
@@ -158,18 +158,12 @@ services:
     image: sse-server-api-image:${GIT_TAG:-latest}
     ports:
       - 8080:8080
+    secrets:
+      - source: prod_env
+        target: /run/secrets/.env.prod
     environment:
-      REDIS_HOST: redis_prod
-      REDIS_PORT: ${REDIS_PORT:?error}
-      REDIS_PASSWORD: ${REDIS_PASSWORD:?error}
-      REDIS_DB: ${REDIS_DB:?error}
-      NEXUS_DB_NAME: ${NEXUS_DB_NAME:?error}
-      NEXUS_DB_USER: ${NEXUS_DB_USER:?error}
-      NEXUS_DB_PWD: ${NEXUS_DB_PWD:?error}
-      NEXUS_DB_HOST: pg_db_prod
-      NEXUS_DB_PORT: 5432
       GIN_MODE: release
-      PORT: 8080
+      PORT: "8080"
     healthcheck:
       test:
         [
@@ -210,19 +204,12 @@ services:
     image: go-api-server-api-image:${GIT_TAG:-latest}
     ports:
       - 8081:8080
+    secrets:
+      - source: prod_env
+        target: /run/secrets/.env.prod
     environment:
-      REDIS_HOST: redis_prod
-      REDIS_PORT: ${REDIS_PORT:?error}
-      REDIS_PASSWORD: ${REDIS_PASSWORD:?error}
-      REDIS_DB: ${REDIS_DB:?error}
-      NEXUS_SECRET_KEY: ${NEXUS_SECRET_KEY:?error}
-      NEXUS_DB_NAME: ${NEXUS_DB_NAME:?error}
-      NEXUS_DB_USER: ${NEXUS_DB_USER:?error}
-      NEXUS_DB_PWD: ${NEXUS_DB_PWD:?error}
-      NEXUS_DB_HOST: pg_db_prod
-      NEXUS_DB_PORT: 5432
       GIN_MODE: release
-      PORT: 8080
+      PORT: "8080"
     healthcheck:
       test:
         [
@@ -326,3 +313,7 @@ volumes:
     name: prometheus_data_${ENV}
   grafana_data:
     name: grafana_data_${ENV}
+
+secrets:
+  prod_env:
+    file: .env.prod

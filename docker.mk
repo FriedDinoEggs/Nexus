@@ -4,12 +4,15 @@ GIT_TAG := $(shell git describe --tags --abbrev=0 2>/dev/null || echo 'latest')
 VERSION := $(GIT_TAG)
 COMPOSE_FILE = compose.yaml
 
+ENV_FILE_FLAG =
+
 ifeq ($(ENV), prod)
 	PROJ_NAME = tt-prod
 	COMPOSE_FILE = compose.prod.yaml
+	ENV_FILE_FLAG = --env-file .env.prod
 endif
 
-DOCKER_CMD := GIT_TAG=$(GIT_TAG) docker compose -f $(COMPOSE_FILE) -p $(PROJ_NAME)
+DOCKER_CMD := GIT_TAG=$(GIT_TAG) docker compose $(ENV_FILE_FLAG) -f $(COMPOSE_FILE) -p $(PROJ_NAME)
 
 .PHONY: dk-up dk-down dk-dev deploy
 

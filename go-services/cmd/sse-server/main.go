@@ -79,8 +79,55 @@ func main() {
 }
 
 func InitDB(ctx context.Context) error {
-	if err := godotenv.Load(); err != nil {
-		slog.Warn("No .env file found or failed to load, falling back to system environment variables", "error", err)
+	isProd := false
+	var fileConfig map[string]string
+
+	if _, err := os.Stat("/run/secrets/.env.prod"); err == nil {
+		isProd = true
+		if m, err := godotenv.Read("/run/secrets/.env.prod"); err == nil {
+			slog.Info("Production mode: Loaded configurations directly from file into memory")
+			fileConfig = m
+		} else {
+			slog.Error("Failed to read /run/secrets/.env.prod", "error", err)
+			return err
+		}
+	} else if os.Getenv("GIN_MODE") == "release" {
+		isProd = true
+		if m, err := godotenv.Read(".env.prod"); err == nil {
+			slog.Info("Production mode: Loaded .env.prod directly into memory")
+			fileConfig = m
+		} else {
+			slog.Error("Failed to read .env.prod", "error", err)
+			return err
+		}
+	} else {
+		if err := godotenv.Load(); err != nil {
+			slog.Warn("No .env file found, using system environment variables")
+		}
+	}
+
+	getConf := func(key string) string {
+		if isProd {
+			if fileConfig != nil {
+				if val, ok := fileConfig[key]; ok && val != "" {
+					return val
+				}
+			}
+			slog.Error("Required configuration missing from production file", "key", key)
+			os.Exit(1)
+		}
+		val := os.Getenv(key)
+		if val == "" {
+			slog.Error("Required configuration missing from environment", "key", key)
+			os.Exit(1)
+		}
+		return val
+	}
+
+	redisDB, err := strconv.Atoi(getConf("REDIS_DB"))
+	if err != nil {
+		slog.Error("Invalid REDIS_DB", "error", err)
+		os.Exit(1)
 	}
 
 	cfg := struct {
@@ -88,9 +135,9 @@ func InitDB(ctx context.Context) error {
 		Pwd  string
 		DB   int
 	}{
-		Addr: fmt.Sprintf("%s:%s", os.Getenv("REDIS_HOST"), os.Getenv("REDIS_PORT")),
-		Pwd:  os.Getenv("REDIS_PASSWORD"),
-		DB:   getEnvInt("REDIS_DB", 0),
+		Addr: fmt.Sprintf("%s:%s", getConf("REDIS_HOST"), getConf("REDIS_PORT")),
+		Pwd:  getConf("REDIS_PASSWORD"),
+		DB:   redisDB,
 	}
 
 	rdb = redis.NewClient(&redis.Options{
@@ -103,9 +150,11 @@ func InitDB(ctx context.Context) error {
 	slog.Info("Redis client configured", "addr", cfg.Addr, "db", cfg.DB)
 
 	connStr := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable",
-		os.Getenv("NEXUS_DB_USER"), os.Getenv("NEXUS_DB_PWD"),
-		os.Getenv("NEXUS_DB_HOST"), os.Getenv("NEXUS_DB_PORT"),
-		os.Getenv("NEXUS_DB_NAME"),
+		getConf("NEXUS_DB_USER"),
+		getConf("NEXUS_DB_PWD"),
+		getConf("NEXUS_DB_HOST"),
+		getConf("NEXUS_DB_PORT"),
+		getConf("NEXUS_DB_NAME"),
 	)
 	config, err := pgxpool.ParseConfig(connStr)
 	if err != nil {
@@ -131,11 +180,4 @@ func InitDB(ctx context.Context) error {
 
 	slog.Info("PostgreSQL connection pool initialized and pinged successfully")
 	return nil
-}
-
-func getEnvInt(key string, defaultVal int) int {
-	if value, err := strconv.Atoi(os.Getenv(key)); err == nil {
-		return value
-	}
-	return defaultVal
 }

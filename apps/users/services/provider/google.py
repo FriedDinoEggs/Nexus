@@ -1,3 +1,4 @@
+import json
 import logging
 
 from django.conf import settings
@@ -14,15 +15,25 @@ logger = logging.getLogger(__name__)
 
 class GoogleProvider(BaseProvider):
     def get_user_info(self, code) -> OAuthUserInfo:
-        flow = Flow.from_client_secrets_file(
-            settings.GOOGLE_OAUTH_SECRET_FILE_PATH,
-            scopes=[
-                'openid',
-                'https://www.googleapis.com/auth/userinfo.profile',
-                'https://www.googleapis.com/auth/userinfo.email',
-            ],
-            redirect_uri='postmessage',
-        )
+        scopes = [
+            'openid',
+            'https://www.googleapis.com/auth/userinfo.profile',
+            'https://www.googleapis.com/auth/userinfo.email',
+        ]
+
+        if getattr(settings, 'GOOGLE_CLIENT_SECRET_JSON', None):
+            client_config = json.loads(settings.GOOGLE_CLIENT_SECRET_JSON)
+            flow = Flow.from_client_config(
+                client_config,
+                scopes=scopes,
+                redirect_uri='postmessage',
+            )
+        else:
+            flow = Flow.from_client_secrets_file(
+                settings.GOOGLE_OAUTH_SECRET_FILE_PATH,
+                scopes=scopes,
+                redirect_uri='postmessage',
+            )
 
         try:
             flow.fetch_token(code=code)
@@ -33,6 +44,7 @@ class GoogleProvider(BaseProvider):
                 credential.id_token,
                 google_request.Request(),
                 settings.GOOGLE_WEB_CLIENT_ID,
+                clock_skew_in_seconds=10,
             )
 
             return OAuthUserInfo(
