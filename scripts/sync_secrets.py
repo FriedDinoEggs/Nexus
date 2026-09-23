@@ -212,7 +212,7 @@ def write_env_file(output_path: Path, project_id: str, env_vars: Dict[str, str])
         pass
 
     print(f'\n[SUCCESS] Production package written to: {output_path}')
-    print('          File permissions set to 644 (rw-------).')
+    print('          File permissions set to 644 (rw-r--r--).')
 
 
 def pull_secrets(project_id: str, output_path: Path, base_env_path: Optional[Path]) -> None:
