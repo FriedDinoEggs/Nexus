@@ -8,7 +8,6 @@ Supported subcommands:
 
 import argparse
 import os
-import stat
 import sys
 from pathlib import Path
 from typing import Dict, Optional
@@ -208,12 +207,12 @@ def write_env_file(output_path: Path, project_id: str, env_vars: Dict[str, str])
         f.write('\n'.join(lines) + '\n')
 
     try:
-        os.chmod(output_path, stat.S_IRUSR | stat.S_IWUSR)
+        os.chmod(output_path, 0o644)
     except OSError:
         pass
 
     print(f'\n[SUCCESS] Production package written to: {output_path}')
-    print('          File permissions set to 600 (rw-------).')
+    print('          File permissions set to 644 (rw-------).')
 
 
 def pull_secrets(project_id: str, output_path: Path, base_env_path: Optional[Path]) -> None:
